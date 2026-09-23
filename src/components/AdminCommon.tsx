@@ -8,18 +8,37 @@ export function useL() {
   return (uz: string, ru: string, en: string) => language === 'uz' ? uz : language === 'ru' ? ru : en;
 }
 
-export function PageTitle({ title, subtitle, actionLabel, onAction }: { title: string; subtitle?: string; actionLabel?: string; onAction?: () => void }) {
-  return <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'flex-start' }} gap={2} mb={3}>
-    <Box><Typography variant="h4" fontWeight={850}>{title}</Typography>{subtitle && <Typography color="text.secondary" mt={0.5}>{subtitle}</Typography>}</Box>
+export function PageTitle({ title, subtitle: _subtitle, actionLabel, onAction }: { title: string; subtitle?: string; actionLabel?: string; onAction?: () => void }) {
+  return <Box
+    sx={{
+      display: 'flex',
+      flexDirection: { xs: 'column', sm: 'row' },
+      alignItems: { xs: 'stretch', sm: 'center' },
+      justifyContent: 'flex-start',
+      flexWrap: 'wrap',
+      paddingBottom: { xs: '24px', sm: '30px' },
+    }}
+  >
+    <Typography
+      variant="h4"
+      fontWeight={850}
+      sx={{
+        lineHeight: 1.1,
+        marginRight: { xs: 0, sm: '32px' },
+        marginBottom: { xs: '16px', sm: 0 },
+      }}
+    >
+      {title}
+    </Typography>
     {actionLabel && onAction && <Button variant="contained" startIcon={<AddRounded />} onClick={onAction} sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}>{actionLabel}</Button>}
-  </Stack>;
+  </Box>;
 }
 
 export function Panel({ children, sx }: { children: ReactNode; sx?: object }) {
   return <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden', ...sx }}>{children}</Paper>;
 }
 
-export function TablePanel({ children }: { children: ReactNode }) { return <Panel><TableContainer>{children}</TableContainer></Panel>; }
+export function TablePanel({ children, sx }: { children: ReactNode; sx?: object }) { return <Panel sx={{ mt: 2.5, ...sx }}><TableContainer>{children}</TableContainer></Panel>; }
 
 export function LoadState({ loading, error, onRetry, children }: { loading: boolean; error: string | null; onRetry: () => void; children: ReactNode }) {
   const l = useL();

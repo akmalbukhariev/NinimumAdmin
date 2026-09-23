@@ -65,7 +65,7 @@ function groupStatuses(statuses: DashboardOrderStatus[]) {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { accessToken, logout } = useAuth();
-  const { t, locale } = useLanguage();
+  const { t, locale, language } = useLanguage();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -103,6 +103,11 @@ export default function DashboardPage() {
   };
 
   const sales = useMemo(() => {
+    const weekdayLabels = {
+      uz: ['Yak', 'Du', 'Se', 'Chor', 'Pay', 'Jum', 'Shan'],
+      ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+      en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    } as const;
     const source = new Map((data?.sales_last_7_days ?? []).map((item) => [item.sales_date, normalizeNumber(item.total)]));
     return Array.from({ length: 7 }, (_, index) => {
       const date = new Date();
@@ -111,11 +116,11 @@ export default function DashboardPage() {
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       return {
         key,
-        label: new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(date),
+        label: weekdayLabels[language][date.getDay()],
         total: source.get(key) ?? 0,
       };
     });
-  }, [data, locale]);
+  }, [data, language]);
 
   const maxSales = Math.max(...sales.map((item) => item.total), 1);
   const groupedStatuses = groupStatuses(data?.order_status_today ?? []);
@@ -138,11 +143,26 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Box display="flex" alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between" gap={2} flexWrap="wrap">
-        <Box>
-          <Typography variant="h4">{t('dashboard.title')}</Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.6, fontSize: 14 }}>{t('dashboard.welcome')}</Typography>
-        </Box>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+          justifyContent: 'flex-start',
+          flexWrap: 'wrap',
+          paddingBottom: { xs: '24px', sm: '30px' },
+        }}
+      >
+        <Typography
+          variant="h4"
+          sx={{
+            lineHeight: 1.1,
+            marginRight: { xs: 0, sm: '32px' },
+            marginBottom: { xs: '16px', sm: 0 },
+          }}
+        >
+          {t('dashboard.title')}
+        </Typography>
         <Button variant="contained" startIcon={<AddRounded />} onClick={() => navigate('/products')} sx={{ px: 2.2, py: 1.05 }}>
           {t('dashboard.addProduct')}
         </Button>
@@ -156,7 +176,7 @@ export default function DashboardPage() {
 
       {data && (
         <>
-          <Box sx={{ mt: 3, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' } }}>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' } }}>
             <StatCard title={t('dashboard.revenue')} value={formatMoney(data.summary.revenue, true)} caption={t('common.allTime')} icon={<AttachMoneyRounded />} accent="#FD473C" />
             <StatCard title={t('dashboard.orders')} value={formatNumber(data.summary.order_count)} caption={t('common.allTime')} icon={<ReceiptLongOutlined />} accent="#3D7CF4" />
             <StatCard title={t('dashboard.customers')} value={formatNumber(data.summary.customer_count)} caption={t('common.total')} icon={<GroupsRounded />} accent="#7CB518" />

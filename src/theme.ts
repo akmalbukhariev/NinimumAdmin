@@ -65,6 +65,23 @@ export const theme = createTheme({
         },
       },
     },
+    MuiDialogContent: {
+      styleOverrides: {
+        root: {
+          paddingLeft: 24,
+          paddingRight: 24,
+          paddingBottom: 20,
+        },
+      },
+    },
+    MuiDialogActions: {
+      styleOverrides: {
+        root: {
+          padding: '16px 24px 24px',
+          gap: 8,
+        },
+      },
+    },
     MuiChip: {
       styleOverrides: {
         root: {
