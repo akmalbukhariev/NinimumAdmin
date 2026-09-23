@@ -11,7 +11,6 @@ import {
   PeopleAltRounded,
   RateReviewRounded,
   ReceiptLongRounded,
-  SearchRounded,
   SettingsRounded,
   WorkspacePremiumRounded,
 } from '@mui/icons-material';
@@ -21,14 +20,12 @@ import {
   Divider,
   Drawer,
   IconButton,
-  InputAdornment,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
-  TextField,
   Tooltip,
   Typography,
   useMediaQuery,
@@ -181,16 +178,6 @@ export default function AdminLayout() {
           }}
         >
           {!isDesktop && <IconButton onClick={() => setMobileOpen(true)}><MenuRounded /></IconButton>}
-
-          <TextField
-            size="small"
-            placeholder={t('header.search')}
-            sx={{
-              width: { xs: '100%', sm: 340 },
-              '& .MuiOutlinedInput-root': { background: '#F7F8FB', borderRadius: 2.5, '& fieldset': { borderColor: '#ECEDEF' } },
-            }}
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRounded sx={{ fontSize: 20, color: '#96979B' }} /></InputAdornment> }}
-          />
 
           <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: { xs: 'none', md: 'block' } }}><LanguageSelector /></Box>
