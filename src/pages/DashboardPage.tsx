@@ -30,8 +30,8 @@ import { getDashboard } from '../api/adminApi';
 import type { DashboardData, DashboardOrderStatus } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
 import StatCard from '../components/StatCard';
+import { useEnumLabel } from '../components/AdminCommon';
 import { useLanguage } from '../i18n/LanguageProvider';
-import type { TranslationKey } from '../i18n/translations';
 
 const statusColors: Record<string, { bg: string; color: string }> = {
   PENDING: { bg: '#FFF6E8', color: '#B97108' },
@@ -66,6 +66,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { accessToken, logout } = useAuth();
   const { t, locale, language } = useLanguage();
+  const enumLabel = useEnumLabel();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -281,14 +282,13 @@ export default function DashboardPage() {
                     <TableBody>
                       {data.recent_orders.map((order) => {
                         const statusStyle = statusColors[order.status] ?? { bg: '#F1F2F4', color: '#697178' };
-                        const statusKey = `status.${order.status}` as TranslationKey;
                         return (
                           <TableRow key={order.order_id} hover>
                             <TableCell sx={{ py: 1.45, fontSize: 13, fontWeight: 800, borderColor: 'divider' }}>{order.order_number}</TableCell>
                             <TableCell sx={{ py: 1.45, fontSize: 13, borderColor: 'divider' }}>{order.customer_name || '-'}</TableCell>
                             <TableCell sx={{ py: 1.45, fontSize: 13, fontWeight: 700, borderColor: 'divider' }}>{formatMoney(order.total_price)}</TableCell>
                             <TableCell sx={{ py: 1.45, borderColor: 'divider' }}>
-                              <Chip size="small" label={t(statusKey)} sx={{ height: 25, bgcolor: statusStyle.bg, color: statusStyle.color, fontSize: 11 }} />
+                              <Chip size="small" label={enumLabel(order.status)} sx={{ height: 25, bgcolor: statusStyle.bg, color: statusStyle.color, fontSize: 11 }} />
                             </TableCell>
                             <TableCell sx={{ py: 1.45, fontSize: 12, color: 'text.secondary', borderColor: 'divider' }}>
                               {order.ordered_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(order.ordered_at.replace(' ', 'T'))) : '-'}
