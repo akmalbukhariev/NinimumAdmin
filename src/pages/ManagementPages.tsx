@@ -21,6 +21,34 @@ function usePaged(loader:(page:number,pageSize:number)=>Promise<api.PageData>) {
   return {data,loading,error,reload,pagination};
 }
 
+function SelectedImageThumbnail({ file, removeLabel, onRemove }: { file: File; removeLabel: string; onRemove: () => void }) {
+  const [src, setSrc] = useState('');
+
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setSrc(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  return <Box sx={{ position: 'relative', width: 104, height: 104, flexShrink: 0 }}>
+    <Avatar variant="rounded" src={src} alt={file.name} sx={{ width: 104, height: 104, bgcolor: 'grey.100' }} />
+    <Tooltip title={removeLabel}>
+      <IconButton
+        size="small"
+        color="error"
+        onClick={onRemove}
+        sx={{
+          position: 'absolute', top: 4, right: 4, width: 28, height: 28,
+          bgcolor: 'rgba(255,255,255,.96)', border: '1px solid', borderColor: 'divider', boxShadow: 1,
+          '&:hover': { bgcolor: 'background.paper' },
+        }}
+      >
+        <DeleteRounded sx={{ fontSize: 18 }} />
+      </IconButton>
+    </Tooltip>
+  </Box>;
+}
+
 export function OrdersPage(){
   const token=useToken(), l=useL(), enumLabel=useEnumLabel(); const { confirm, confirmDialog }=useConfirm(); const [search,setSearch]=useState(''),[status,setStatus]=useState('');
   const loader=useCallback((p:number,s:number)=>api.listOrders(token,{page:p,page_size:s,search,status}),[token,search,status]);
@@ -246,7 +274,25 @@ export function ProductsPage() {
         <FormControlLabel control={<Checkbox checked={Boolean(form.is_featured)} onChange={(event) => setForm((value) => ({ ...value, is_featured: event.target.checked }))} />} label={l('Tavsiya etilgan', 'Рекомендуемый', 'Featured')} />
         <TextField label={l('Qisqa tavsif', 'Краткое описание', 'Short description')} value={form.short_description} onChange={(event) => setForm((value) => ({ ...value, short_description: event.target.value }))} multiline minRows={2} />
         <TextField label={l('Tavsif', 'Описание', 'Description')} value={form.description} onChange={(event) => setForm((value) => ({ ...value, description: event.target.value }))} multiline minRows={2} />
-        <Box><Button component="label" variant="outlined">{l('Rasmlarni tanlash', 'Выбрать изображения', 'Choose images')}<input hidden multiple type="file" accept="image/*" onChange={(event) => setImages(Array.from(event.target.files || []))} /></Button><Typography variant="body2" color="text.secondary" mt={1}>{images.length} {l('ta rasm', 'изобр.', 'images')}</Typography></Box>
+        <Box sx={{ gridColumn: '1 / -1' }}>
+          <Button component="label" variant="outlined">
+            {l('Rasmlarni tanlash', 'Выбрать изображения', 'Choose images')}
+            <input hidden multiple type="file" accept="image/*" onChange={(event) => setImages(Array.from(event.target.files || []))} />
+          </Button>
+          {images.length > 0 && <>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1.25, mb: 1.25 }}>
+              {images.length} {l('ta rasm tanlandi', 'изображений выбрано', 'images selected')}
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 2, rowGap: 2 }}>
+              {images.map((file, index) => <SelectedImageThumbnail
+                key={`${file.name}-${file.lastModified}-${index}`}
+                file={file}
+                removeLabel={l('Tanlangan rasmni olib tashlash', 'Удалить выбранное изображение', 'Remove selected image')}
+                onRemove={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+              />)}
+            </Box>
+          </>}
+        </Box>
       </Box></DialogContent>
       <DialogActions><Button onClick={() => setCreateOpen(false)}>{l('Bekor qilish', 'Отмена', 'Cancel')}</Button><Button variant="contained" disabled={!form.name || !form.category_id || !form.fiscal_mxik_package_id || !form.price} onClick={() => void createProduct()}>{l('Yaratish', 'Создать', 'Create')}</Button></DialogActions>
     </Dialog>
