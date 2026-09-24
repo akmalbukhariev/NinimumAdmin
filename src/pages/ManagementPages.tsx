@@ -203,7 +203,7 @@ export function ProductsPage() {
         <TableCell>{l('Mahsulot', 'Товар', 'Product')}</TableCell><TableCell>{l('Kategoriya', 'Категория', 'Category')}</TableCell><TableCell>{l('Narx', 'Цена', 'Price')}</TableCell><TableCell>{l('Obuna narxi', 'Цена подписки', 'Subscription')}</TableCell><TableCell>{l('Ombor', 'Остаток', 'Stock')}</TableCell><TableCell>{l('Holat', 'Статус', 'Status')}</TableCell><TableCell />
       </TableRow></TableHead><TableBody>
         {x.data.items.map((row) => <TableRow key={row.id} hover>
-          <TableCell><Stack direction="row" alignItems="center" gap={1.2}><Avatar variant="rounded" src={api.imageUrl(row.image_url)}>{String(row.name || '?')[0]}</Avatar><Box><Typography fontWeight={700}>{row.name}</Typography><Typography variant="caption" color="text.secondary">{row.brand || row.sku || ''}</Typography></Box></Stack></TableCell>
+          <TableCell><Box sx={{ display: 'flex', alignItems: 'center' }}><Avatar variant="rounded" src={api.imageUrl(row.image_url)} sx={{ mr: '28px', flexShrink: 0 }}>{String(row.name || '?')[0]}</Avatar><Box><Typography fontWeight={700}>{row.name}</Typography><Typography variant="caption" color="text.secondary">{row.brand || row.sku || ''}</Typography></Box></Box></TableCell>
           <TableCell>{row.category_name || '-'}</TableCell><TableCell>{money(row.price)}</TableCell><TableCell>{row.subscription_price == null ? '-' : money(row.subscription_price)}</TableCell><TableCell>{row.stock_quantity}</TableCell><TableCell><StatusChip value={row.is_active ? 'ACTIVE' : 'INACTIVE'} /></TableCell><TableCell><IconButton onClick={() => void openEdit(row.id)}><EditRounded /></IconButton></TableCell>
         </TableRow>)}
       </TableBody></Table>{x.pagination}</TablePanel>
