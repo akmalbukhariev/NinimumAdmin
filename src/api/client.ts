@@ -22,7 +22,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const headers = new Headers(options.headers);
   headers.set('Accept', 'application/json');
 
-  if (options.body && !headers.has('Content-Type')) {
+  // Only string request bodies in this app are JSON.
+  // FormData/Blob/ArrayBuffer bodies must keep their own content type so the
+  // browser/server can process image uploads correctly.
+  if (typeof options.body === 'string' && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 

@@ -10,7 +10,7 @@ export function useL() {
 
 const enumLabels: Record<string, [string, string, string]> = {
   ACTIVE: ['Faol', 'Активен', 'Active'],
-  INACTIVE: ['Faol emas', 'Неактивен', 'Inactive'],
+  INACTIVE: ['Nofaol', 'Неактивен', 'Inactive'],
   PENDING: ['Kutilmoqda', 'Ожидает', 'Pending'],
   CONFIRMED: ['Tasdiqlandi', 'Подтверждён', 'Confirmed'],
   PREPARING: ['Tayyorlanmoqda', 'Готовится', 'Preparing'],

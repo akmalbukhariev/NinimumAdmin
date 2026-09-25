@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Avatar, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton, MenuItem, Paper, Select, Stack, Tab, Table, TableBody, TableCell, TableHead, TablePagination, TableRow, Tabs, TextField, Tooltip, Typography } from '@mui/material';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { UIEvent } from 'react';
+import { Alert, Autocomplete, Avatar, Backdrop, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton, MenuItem, Select, Stack, Switch, Tab, Table, TableBody, TableCell, TableHead, TablePagination, TableRow, Tabs, TextField, Tooltip, Typography } from '@mui/material';
+import AddRounded from '@mui/icons-material/AddRounded';
 import EditRounded from '@mui/icons-material/EditRounded';
 import DeleteRounded from '@mui/icons-material/DeleteRounded';
 import RefreshRounded from '@mui/icons-material/RefreshRounded';
@@ -11,6 +13,7 @@ import type { Row } from '../api/managementApi';
 
 const useToken = () => useAuth().accessToken!;
 const emptyPage = { items: [] as Row[], total: 0, page: 1, page_size: 20 };
+const MXIK_PAGE_SIZE = 20;
 function usePaged(loader:(page:number,pageSize:number)=>Promise<api.PageData>) {
   const l=useL();
   const [data,setData]=useState(emptyPage), [loading,setLoading]=useState(true), [error,setError]=useState<string|null>(null);
@@ -18,7 +21,9 @@ function usePaged(loader:(page:number,pageSize:number)=>Promise<api.PageData>) {
   const reload=useCallback(async()=>{setLoading(true);setError(null);try{setData(await loader(page+1,pageSize));}catch(e){setError(e instanceof Error?e.message:'Error');}finally{setLoading(false);}},[loader,page,pageSize]);
   useEffect(()=>{void reload();},[reload]);
   const pagination=<TablePagination component="div" count={data.total} page={page} rowsPerPage={pageSize} onPageChange={(_,p)=>setPage(p)} onRowsPerPageChange={e=>{setPage(0);setPageSize(Number(e.target.value));}} rowsPerPageOptions={[10,20,50,100]} labelRowsPerPage={l('Sahifadagi qatorlar:','Строк на странице:','Rows per page:')} labelDisplayedRows={({from,to,count})=>`${from}–${to} / ${count!==-1?count:`>${to}`}`} />;
-  return {data,loading,error,reload,pagination};
+  const updateItem=useCallback((id:number, updater:(row:Row)=>Row)=>{setData(current=>({...current,items:current.items.map(row=>Number(row.id)===id?updater(row):row)}));},[]);
+  const removeItem=useCallback((id:number)=>{setData(current=>({...current,items:current.items.filter(row=>Number(row.id)!==id),total:Math.max(0,current.total-1)}));},[]);
+  return {data,loading,error,reload,pagination,updateItem,removeItem};
 }
 
 function SelectedImageThumbnail({ file, removeLabel, onRemove }: { file: File; removeLabel: string; onRemove: () => void }) {
@@ -73,12 +78,32 @@ export function ProductsPage() {
   const [active, setActive] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [categories, setCategories] = useState<Row[]>([]);
-  const [packages, setPackages] = useState<Row[]>([]);
+  const [mxikOptions, setMxikOptions] = useState<Row[]>([]);
+  const [mxikKeyword, setMxikKeyword] = useState('');
+  const [mxikLoading, setMxikLoading] = useState(false);
+  const [mxikLoadingMore, setMxikLoadingMore] = useState(false);
+  const [mxikOffset, setMxikOffset] = useState(0);
+  const [mxikHasMore, setMxikHasMore] = useState(true);
+  const mxikRequestVersion = useRef(0);
+  const mxikLoadingMoreRef = useRef(false);
+  const [createMxik, setCreateMxik] = useState<Row | null>(null);
+  const [createPackages, setCreatePackages] = useState<Row[]>([]);
+  const [createPackagesLoading, setCreatePackagesLoading] = useState(false);
+  const [editMxik, setEditMxik] = useState<Row | null>(null);
+  const [editPackages, setEditPackages] = useState<Row[]>([]);
+  const [editPackagesLoading, setEditPackagesLoading] = useState(false);
   const [edit, setEdit] = useState<Row | null>(null);
+  const [editOriginal, setEditOriginal] = useState<Row | null>(null);
+  const [editDeletedImageIds, setEditDeletedImageIds] = useState<number[]>([]);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [images, setImages] = useState<File[]>([]);
   const [editImages, setEditImages] = useState<File[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createSaving, setCreateSaving] = useState(false);
+  const [productActionId, setProductActionId] = useState<number | null>(null);
 
   const loader = useCallback(
     (page: number, pageSize: number) => api.listProducts(token, {
@@ -93,16 +118,139 @@ export function ProductsPage() {
   const x = usePaged(loader);
 
   useEffect(() => {
-    void Promise.all([api.listCategories(token), api.listFiscalPackages(token)]).then(([categoryRows, fiscalRows]) => {
-      setCategories(categoryRows);
-      setPackages(fiscalRows);
-    });
+    void api.listCategories(token).then(setCategories);
   }, [token]);
+
+  const fiscalDialogOpen = createOpen || Boolean(edit);
+
+  const loadMxikPage = useCallback(async (offset: number, append: boolean, version: number) => {
+    if (append) {
+      if (mxikLoadingMoreRef.current) return;
+      mxikLoadingMoreRef.current = true;
+      setMxikLoadingMore(true);
+    } else {
+      setMxikLoading(true);
+    }
+    try {
+      const rows = await api.listFiscalMxik(token, mxikKeyword, MXIK_PAGE_SIZE, offset);
+      if (version !== mxikRequestVersion.current) return;
+      setMxikOptions((current) => {
+        const base = append ? current : [];
+        const byId = new Map<number, Row>();
+        base.forEach((item) => byId.set(Number(item.mxik_id), item));
+        rows.forEach((item) => byId.set(Number(item.mxik_id), item));
+        return Array.from(byId.values());
+      });
+      setMxikOffset(offset + rows.length);
+      setMxikHasMore(rows.length === MXIK_PAGE_SIZE);
+    } catch (error) {
+      if (version === mxikRequestVersion.current) {
+        setActionError(error instanceof Error ? error.message : 'Error');
+      }
+    } finally {
+      if (append) {
+        mxikLoadingMoreRef.current = false;
+        if (version === mxikRequestVersion.current) setMxikLoadingMore(false);
+      } else if (version === mxikRequestVersion.current) {
+        setMxikLoading(false);
+      }
+    }
+  }, [token, mxikKeyword]);
+
+  useEffect(() => {
+    if (!fiscalDialogOpen) return;
+    const timer = window.setTimeout(() => {
+      const version = ++mxikRequestVersion.current;
+      mxikLoadingMoreRef.current = false;
+      setMxikOptions([]);
+      setMxikOffset(0);
+      setMxikHasMore(true);
+      setMxikLoadingMore(false);
+      void loadMxikPage(0, false, version);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [fiscalDialogOpen, mxikKeyword, loadMxikPage]);
+
+  const handleMxikScroll = (event: UIEvent<HTMLElement>) => {
+    const listbox = event.currentTarget;
+    const nearBottom = listbox.scrollTop + listbox.clientHeight >= listbox.scrollHeight - 48;
+    if (nearBottom && mxikHasMore && !mxikLoading && !mxikLoadingMoreRef.current) {
+      void loadMxikPage(mxikOffset, true, mxikRequestVersion.current);
+    }
+  };
+
+  const mxikDisplayOptions: Row[] = mxikLoadingMore
+    ? [...mxikOptions, { __mxikLoading: true }]
+    : mxikOptions;
+
+  const loadCreatePackages = async (mxik: Row | null) => {
+    setCreateMxik(mxik);
+    setCreatePackages([]);
+    setForm((value) => ({
+      ...value,
+      fiscal_mxik_package_id: '',
+      short_description: '',
+      description: mxik?.mxik_name ?? '',
+    }));
+    if (!mxik?.mxik_id) return;
+    setCreatePackagesLoading(true);
+    try {
+      setCreatePackages(await api.listFiscalPackages(token, '', Number(mxik.mxik_id)));
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Error');
+    } finally {
+      setCreatePackagesLoading(false);
+    }
+  };
+
+  const loadEditPackages = async (mxik: Row | null) => {
+    setEditMxik(mxik);
+    setEditPackages([]);
+    setEdit((value) => value && ({
+      ...value,
+      fiscal_mxik_package_id: '',
+      short_description: '',
+      description: mxik?.mxik_name ?? '',
+      mxik_id: mxik?.mxik_id ?? null,
+      mxik_name: mxik?.mxik_name ?? '',
+      mxik_code: mxik?.mxik_code ?? '',
+    }));
+    if (!mxik?.mxik_id) return;
+    setEditPackagesLoading(true);
+    try {
+      setEditPackages(await api.listFiscalPackages(token, '', Number(mxik.mxik_id)));
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Error');
+    } finally {
+      setEditPackagesLoading(false);
+    }
+  };
+
+  const selectCreatePackage = (packageId: string | number) => {
+    const selected = createPackages.find((item) => Number(item.fiscal_mxik_package_id) === Number(packageId));
+    setForm((value) => ({
+      ...value,
+      fiscal_mxik_package_id: packageId,
+      short_description: selected?.package_name ?? '',
+      description: createMxik?.mxik_name ?? '',
+    }));
+  };
+
+  const selectEditPackage = (packageId: string | number) => {
+    const selected = editPackages.find((item) => Number(item.fiscal_mxik_package_id) === Number(packageId));
+    setEdit((value) => value && ({
+      ...value,
+      fiscal_mxik_package_id: Number(packageId),
+      short_description: selected?.package_name ?? '',
+      description: editMxik?.mxik_name ?? '',
+      package_code: selected?.package_code ?? '',
+      package_name: selected?.package_name ?? '',
+    }));
+  };
 
   const blankProduct = (): Row => ({
     category_id: '', fiscal_mxik_package_id: '', vat_percent: 12, name: '', short_description: '', description: '',
     sku: '', barcode: '', brand: '', price: '', subscription_price: '', stock_quantity: 0, weight_gram: '',
-    is_featured: false,
   });
   const [form, setForm] = useState<Row>(blankProduct);
 
@@ -110,93 +258,171 @@ export function ProductsPage() {
     setActionError(null);
     try {
       const detail = await api.getProduct(token, id);
-      setEdit({ ...detail.product, images: detail.images ?? [] });
+      const product = { ...detail.product, images: detail.images ?? [] };
+      setEdit(product);
+      setEditOriginal({ ...product, images: [...(product.images ?? [])] });
       setEditImages([]);
+      setEditDeletedImageIds([]);
+      setEditError(null);
+      setEditSaving(false);
+      setMxikKeyword('');
+
+      if (product.mxik_id) {
+        const currentMxik = { mxik_id: product.mxik_id, mxik_code: product.mxik_code, mxik_name: product.mxik_name };
+        setEditMxik(currentMxik);
+        setMxikOptions((current) => [currentMxik, ...current.filter((item) => Number(item.mxik_id) !== Number(currentMxik.mxik_id))]);
+        setEditPackagesLoading(true);
+        try {
+          setEditPackages(await api.listFiscalPackages(token, '', Number(product.mxik_id)));
+        } finally {
+          setEditPackagesLoading(false);
+        }
+      } else {
+        setEditMxik(null);
+        setEditPackages([]);
+      }
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Error');
     }
+  };
+
+  const closeEdit = () => {
+    if (editSaving) return;
+    setEdit(null);
+    setEditOriginal(null);
+    setEditImages([]);
+    setEditDeletedImageIds([]);
+    setEditError(null);
+  };
+
+  const sameEditValue = (key: string, a: unknown, b: unknown) => {
+    const numericKeys = new Set(['category_id', 'fiscal_mxik_package_id', 'vat_percent', 'price', 'subscription_price', 'stock_quantity', 'weight_gram']);
+    const nullableNumericKeys = new Set(['subscription_price', 'weight_gram']);
+    const nullableTextKeys = new Set(['sku', 'barcode', 'brand']);
+
+    if (numericKeys.has(key)) {
+      if (nullableNumericKeys.has(key) && (a === '' || a == null) && (b === '' || b == null)) return true;
+      return Number(a ?? 0) === Number(b ?? 0);
+    }
+    if (nullableTextKeys.has(key)) return String(a ?? '').trim() === String(b ?? '').trim();
+    if (key === 'is_active') return Boolean(a) === Boolean(b);
+    return String(a ?? '') === String(b ?? '');
   };
 
   const saveEdit = async () => {
-    if (!edit) return;
-    if (!edit.is_active) {
-      const ok = await confirm({ danger: true, message: l('Mahsulot faol emas holatda saqlanadi. Davom etishga ishonchingiz komilmi?', 'Товар будет сохранён неактивным. Вы уверены, что хотите продолжить?', 'This product will be saved as inactive. Are you sure you want to continue?') });
-      if (!ok) return;
-    }
-    setActionError(null);
+    if (!edit || !editOriginal || editSaving) return;
+    setEditError(null);
+    setEditSaving(true);
+
     try {
-      await api.updateProduct(token, edit.id, {
-        category_id: edit.category_id,
-        fiscal_mxik_package_id: edit.fiscal_mxik_package_id,
+      const currentValues: Row = {
+        category_id: Number(edit.category_id),
+        fiscal_mxik_package_id: Number(edit.fiscal_mxik_package_id),
         vat_percent: Number(edit.vat_percent ?? 0),
-        name: edit.name,
+        name: String(edit.name ?? '').trim(),
         short_description: edit.short_description ?? '',
         description: edit.description ?? '',
-        sku: edit.sku ?? '',
-        barcode: edit.barcode ?? '',
-        brand: edit.brand ?? '',
+        sku: String(edit.sku ?? '').trim() || null,
+        barcode: String(edit.barcode ?? '').trim() || null,
+        brand: String(edit.brand ?? '').trim() || null,
         price: Number(edit.price ?? 0),
-        subscription_price: edit.subscription_price === '' ? null : Number(edit.subscription_price ?? 0),
+        subscription_price: edit.subscription_price === '' || edit.subscription_price == null ? null : Number(edit.subscription_price),
         stock_quantity: Number(edit.stock_quantity ?? 0),
-        weight_gram: edit.weight_gram === '' ? null : Number(edit.weight_gram ?? 0),
+        weight_gram: edit.weight_gram === '' || edit.weight_gram == null ? null : Number(edit.weight_gram),
         is_active: Boolean(edit.is_active),
-        is_featured: Boolean(edit.is_featured),
+      };
+
+      const changedFields: Row = {};
+      Object.entries(currentValues).forEach(([key, value]) => {
+        if (!sameEditValue(key, value, editOriginal[key])) changedFields[key] = value;
       });
+
+      if (Object.keys(changedFields).length > 0) {
+        await api.updateProduct(token, edit.id, changedFields);
+      }
+
+      for (const imageId of editDeletedImageIds) {
+        await api.deleteProductImage(token, edit.id, imageId);
+      }
+
+      if (editImages.length > 0) {
+        await api.addProductImages(token, edit.id, editImages);
+      }
+
       setEdit(null);
-      await x.reload();
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Error');
-    }
-  };
-
-  const createProduct = async () => {
-    setActionError(null);
-    try {
-      await api.createProduct(token, {
-        ...form,
-        category_id: Number(form.category_id),
-        fiscal_mxik_package_id: Number(form.fiscal_mxik_package_id),
-        vat_percent: Number(form.vat_percent),
-        price: Number(form.price),
-        subscription_price: form.subscription_price === '' ? null : Number(form.subscription_price),
-        stock_quantity: Number(form.stock_quantity),
-        weight_gram: form.weight_gram === '' ? null : Number(form.weight_gram),
-      }, images);
-      setCreateOpen(false);
-      setForm(blankProduct());
-      setImages([]);
-      await x.reload();
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Error');
-    }
-  };
-
-  const uploadEditImages = async () => {
-    if (!edit || editImages.length === 0) return;
-    setActionError(null);
-    try {
-      await api.addProductImages(token, edit.id, editImages);
-      const detail = await api.getProduct(token, edit.id);
-      setEdit({ ...detail.product, images: detail.images ?? [] });
+      setEditOriginal(null);
       setEditImages([]);
+      setEditDeletedImageIds([]);
+      setEditError(null);
       await x.reload();
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Error');
+      const message = error instanceof Error ? error.message : 'Error';
+      setEditError(message === 'NETWORK_ERROR'
+        ? l(
+            'Server bilan ulanishda xatolik yuz berdi. O‘zgarishlar to‘liq saqlanmagan bo‘lishi mumkin. Qayta urinib ko‘ring.',
+            'Ошибка соединения с сервером. Некоторые изменения могли не сохраниться. Попробуйте ещё раз.',
+            'Could not connect to the server. Some changes may not have been saved. Please try again.',
+          )
+        : message);
+    } finally {
+      setEditSaving(false);
     }
   };
 
-  const removeEditImage = async (imageId: number) => {
-    if (!edit) return;
-    const ok = await confirm({ danger: true, message: l('Ushbu mahsulot rasmini o‘chirishga ishonchingiz komilmi?', 'Вы уверены, что хотите удалить это изображение товара?', 'Are you sure you want to delete this product image?') });
+  const stageEditImageRemoval = (imageId: number) => {
+    if (!edit || editSaving) return;
+    setEdit((current) => current && ({
+      ...current,
+      images: (current.images ?? []).filter((image: Row) => Number(image.id) !== imageId),
+    }));
+    setEditDeletedImageIds((current) => current.includes(imageId) ? current : [...current, imageId]);
+  };
+
+  const toggleProductActive = async (row: Row) => {
+    const productId = Number(row.id);
+    const nextActive = !Boolean(row.is_active);
+    setActionError(null);
+    setProductActionId(productId);
+    try {
+      await api.updateProduct(token, productId, { is_active: nextActive });
+      const filteredOut = (active === 'true' && !nextActive) || (active === 'false' && nextActive);
+      if (filteredOut) x.removeItem(productId);
+      else x.updateItem(productId, (current) => ({ ...current, is_active: nextActive }));
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : l('Holatni yangilab bo‘lmadi.', 'Не удалось обновить статус.', 'Could not update status.'));
+    } finally {
+      setProductActionId(null);
+    }
+  };
+
+  const removeProduct = async (row: Row) => {
+    const ok = await confirm({
+      danger: true,
+      message: l(
+        `“${String(row.name || '')}” mahsulotini butunlay o‘chirishga ishonchingiz komilmi? Bu amalni ortga qaytarib bo‘lmaydi.`,
+        `Вы уверены, что хотите навсегда удалить товар «${String(row.name || '')}»? Это действие нельзя отменить.`,
+        `Are you sure you want to permanently delete “${String(row.name || '')}”? This action cannot be undone.`,
+      ),
+    });
     if (!ok) return;
     setActionError(null);
+    setProductActionId(Number(row.id));
     try {
-      await api.deleteProductImage(token, edit.id, imageId);
-      const detail = await api.getProduct(token, edit.id);
-      setEdit({ ...detail.product, images: detail.images ?? [] });
+      await api.deleteProduct(token, Number(row.id));
       await x.reload();
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Error');
+      const message = error instanceof Error ? error.message : '';
+      if (message === 'PRODUCT_IS_IN_USE') {
+        setActionError(l(
+          'Bu mahsulot buyurtma, banner, savat, sharh yoki boshqa ma’lumotlarda ishlatilgan. Uni o‘chirish o‘rniga Nofaol holatga o‘tkazing.',
+          'Этот товар уже используется в заказах, баннере, корзине, отзывах или других данных. Вместо удаления переведите его в неактивное состояние.',
+          'This product is already used by orders, banners, carts, reviews, or other data. Make it inactive instead of deleting it.',
+        ));
+      } else {
+        setActionError(message || l('Mahsulotni o‘chirib bo‘lmadi.', 'Не удалось удалить товар.', 'Could not delete the product.'));
+      }
+    } finally {
+      setProductActionId(null);
     }
   };
 
@@ -212,7 +438,7 @@ export function ProductsPage() {
       title={l('Mahsulotlar', 'Товары', 'Products')}
       subtitle={l('Narx, ombor, tavsif va mavjudlikni boshqaring.', 'Управляйте ценами, остатками, описанием и доступностью.', 'Manage pricing, stock, descriptions and availability.')}
       actionLabel={l('Mahsulot qo‘shish', 'Добавить товар', 'Add product')}
-      onAction={() => { setForm(blankProduct()); setImages([]); setCreateOpen(true); }}
+      onAction={() => { setForm(blankProduct()); setImages([]); setCreateMxik(null); setCreatePackages([]); setMxikKeyword(''); setCreateError(null); setCreateSaving(false); setCreateOpen(true); }}
     />
     {actionError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(null)}>{actionError}</Alert>}
     <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={3}>
@@ -232,48 +458,165 @@ export function ProductsPage() {
       </TableRow></TableHead><TableBody>
         {x.data.items.map((row) => <TableRow key={row.id} hover>
           <TableCell><Box sx={{ display: 'flex', alignItems: 'center' }}><Avatar variant="rounded" src={api.imageUrl(row.image_url)} sx={{ mr: '28px', flexShrink: 0 }}>{String(row.name || '?')[0]}</Avatar><Box><Typography fontWeight={700}>{row.name}</Typography><Typography variant="caption" color="text.secondary">{row.brand || row.sku || ''}</Typography></Box></Box></TableCell>
-          <TableCell>{row.category_name || '-'}</TableCell><TableCell>{money(row.price)}</TableCell><TableCell>{row.subscription_price == null ? '-' : money(row.subscription_price)}</TableCell><TableCell>{row.stock_quantity}</TableCell><TableCell><StatusChip value={row.is_active ? 'ACTIVE' : 'INACTIVE'} /></TableCell><TableCell><IconButton onClick={() => void openEdit(row.id)}><EditRounded /></IconButton></TableCell>
+          <TableCell>{row.category_name || '-'}</TableCell><TableCell>{money(row.price)}</TableCell><TableCell>{row.subscription_price == null ? '-' : money(row.subscription_price)}</TableCell><TableCell>{row.stock_quantity}</TableCell>
+          <TableCell>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Switch size="small" checked={Boolean(row.is_active)} disabled={productActionId === Number(row.id)} onChange={() => void toggleProductActive(row)} />
+              {productActionId === Number(row.id)
+                ? <CircularProgress size={18} thickness={5} />
+                : <Typography variant="body2" fontWeight={700}>{enumLabel(row.is_active ? 'ACTIVE' : 'INACTIVE')}</Typography>}
+            </Stack>
+          </TableCell>
+          <TableCell>
+            <Stack direction="row" spacing={0.5}>
+              <Tooltip title={l('Tahrirlash','Редактировать','Edit')}><span><IconButton disabled={productActionId === Number(row.id)} onClick={() => void openEdit(row.id)}><EditRounded /></IconButton></span></Tooltip>
+              <Tooltip title={l('O‘chirish','Удалить','Delete')}><span><IconButton color="error" disabled={productActionId === Number(row.id)} onClick={() => void removeProduct(row)}><DeleteRounded /></IconButton></span></Tooltip>
+            </Stack>
+          </TableCell>
         </TableRow>)}
       </TableBody></Table>{x.pagination}</TablePanel>
     </LoadState>
 
-    <Dialog open={Boolean(edit)} onClose={() => setEdit(null)} fullWidth maxWidth="md">
+    <Dialog open={Boolean(edit)} onClose={closeEdit} fullWidth maxWidth="md">
       <DialogTitle>{l('Mahsulotni tahrirlash', 'Редактировать товар', 'Edit product')}</DialogTitle>
-      <DialogContent sx={{ pt: '20px!important' }}><Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, columnGap: 3, rowGap: 3, '& .MuiFormControl-root': { minWidth: 0 } }}>
+      <DialogContent sx={{ pt: '20px!important' }}>
+        {editError && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setEditError(null)}>{editError}</Alert>}
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, columnGap: 3, rowGap: 3, '& .MuiFormControl-root': { minWidth: 0 } }}>
         <TextField select label={l('Kategoriya', 'Категория', 'Category')} value={edit?.category_id ?? ''} onChange={(event) => setEdit((value) => value && ({ ...value, category_id: Number(event.target.value) }))}>{categories.map((category) => <MenuItem key={category.id} value={category.id}>{category.name}</MenuItem>)}</TextField>
-        <TextField select label="Fiscal MXIK" value={edit?.fiscal_mxik_package_id ?? ''} onChange={(event) => setEdit((value) => value && ({ ...value, fiscal_mxik_package_id: Number(event.target.value) }))}>{packages.map((item) => <MenuItem key={item.fiscal_mxik_package_id} value={item.fiscal_mxik_package_id}>{item.mxik_code} · {item.package_name}</MenuItem>)}</TextField>
+        <Autocomplete
+          options={mxikDisplayOptions}
+          value={editMxik}
+          loading={mxikLoading}
+          filterOptions={(options) => options}
+          getOptionLabel={(option) => option?.__mxikLoading ? '' : String(option?.mxik_name ?? '')}
+          isOptionEqualToValue={(option, value) => !option?.__mxikLoading && Number(option.mxik_id) === Number(value.mxik_id)}
+          onInputChange={(_, value, reason) => { if (reason === 'input' || reason === 'clear') setMxikKeyword(value); }}
+          onChange={(_, value) => { if (!value?.__mxikLoading) void loadEditPackages(value); }}
+          noOptionsText={l('MXIK topilmadi', 'MXIK не найден', 'No MXIK found')}
+          loadingText={l('Qidirilmoqda...', 'Поиск...', 'Searching...')}
+          slotProps={{ listbox: { onScroll: handleMxikScroll } }}
+          renderOption={(props, option) => option?.__mxikLoading
+            ? <li {...props} key="mxik-loading" aria-disabled="true" style={{ justifyContent: 'center', pointerEvents: 'none' }}><CircularProgress size={22} /></li>
+            : <li {...props} key={option.mxik_id}>{option.mxik_name}</li>}
+          renderInput={(params) => <TextField {...params} label="Fiscal MXIK" />}
+        />
+        <TextField select label={l('Qadoq / o‘lchov', 'Упаковка / единица', 'Package / unit')} value={edit?.fiscal_mxik_package_id ?? ''} disabled={!editMxik || editPackagesLoading} onChange={(event) => selectEditPackage(event.target.value)}>
+          {editPackages.map((item) => <MenuItem key={item.fiscal_mxik_package_id} value={item.fiscal_mxik_package_id}>{item.package_name}</MenuItem>)}
+        </TextField>
         {editField('name', l('Nomi', 'Название', 'Name'))}{editField('brand', l('Brend', 'Бренд', 'Brand'))}
         {editField('price', l('Narx', 'Цена', 'Price'), 'number')}{editField('subscription_price', l('Obuna narxi', 'Цена подписки', 'Subscription price'), 'number')}
         {editField('stock_quantity', l('Ombor', 'Остаток', 'Stock'), 'number')}{editField('vat_percent', 'VAT %', 'number')}
         {editField('sku', 'SKU')}{editField('barcode', l('Shtrix kod', 'Штрихкод', 'Barcode'))}{editField('weight_gram', l('Og‘irlik (g)', 'Вес (г)', 'Weight (g)'), 'number')}
-        <Box display="flex" gap={3} alignItems="center" flexWrap="wrap"><FormControlLabel control={<Checkbox checked={Boolean(edit?.is_active)} onChange={(event) => setEdit((value) => value && ({ ...value, is_active: event.target.checked }))} />} label={l('Faol', 'Активный', 'Active')} /><FormControlLabel control={<Checkbox checked={Boolean(edit?.is_featured)} onChange={(event) => setEdit((value) => value && ({ ...value, is_featured: event.target.checked }))} />} label={l('Tavsiya etilgan', 'Рекомендуемый', 'Featured')} /></Box>
-        <TextField label={l('Qisqa tavsif', 'Краткое описание', 'Short description')} value={edit?.short_description ?? ''} onChange={(event) => setEdit((value) => value && ({ ...value, short_description: event.target.value }))} multiline minRows={2} />
-        <TextField label={l('Tavsif', 'Описание', 'Description')} value={edit?.description ?? ''} onChange={(event) => setEdit((value) => value && ({ ...value, description: event.target.value }))} multiline minRows={2} />
-        <Box gridColumn={{ md: '1 / -1' }}>
-          <Typography variant="subtitle2" mb={1}>{l('Mahsulot rasmlari', 'Изображения товара', 'Product images')}</Typography>
-          {Array.isArray(edit?.images) && edit.images.length > 0 && <Stack direction="row" gap={1.5} flexWrap="wrap" mb={2}>{edit.images.map((image: Row) => <Box key={image.id} sx={{ position: 'relative', width: 88, height: 88 }}><Avatar variant="rounded" src={api.imageUrl(image.image_url)} sx={{ width: 88, height: 88 }} /><Tooltip title={l('Rasmni o‘chirish', 'Удалить изображение', 'Delete image')}><IconButton size="small" color="error" onClick={() => void removeEditImage(Number(image.id))} sx={{ position: 'absolute', right: 4, top: 4, width: 28, height: 28, bgcolor: 'rgba(255,255,255,.96)', border: '1px solid', borderColor: 'divider', boxShadow: 1, '&:hover': { bgcolor: 'background.paper' } }}><DeleteRounded sx={{ fontSize: 18 }} /></IconButton></Tooltip></Box>)}</Stack>}
-          <Stack direction={{xs:'column',sm:'row'}} spacing={1.5} alignItems={{sm:'center'}}>
-            <Button component="label" variant="outlined">{l('Rasm qo‘shish', 'Добавить изображения', 'Add images')}<input hidden multiple type="file" accept="image/*" onChange={(event) => setEditImages(Array.from(event.target.files || []))} /></Button>
-            <Typography variant="body2" color="text.secondary">{editImages.length} {l('ta tanlandi', 'выбрано', 'selected')}</Typography>
-            <Button disabled={editImages.length===0} onClick={() => void uploadEditImages()}>{l('Yuklash', 'Загрузить', 'Upload')}</Button>
-          </Stack>
+        <Box sx={{ gridColumn: '1 / -1' }}><FormControlLabel control={<Checkbox checked={Boolean(edit?.is_active)} onChange={(event) => setEdit((value) => value && ({ ...value, is_active: event.target.checked }))} />} label={l('Faol', 'Активный', 'Active')} /></Box>
+        <TextField sx={{ gridColumn: '1 / -1' }} label={l('Qisqa tavsif', 'Краткое описание', 'Short description')} value={edit?.short_description ?? ''} multiline minRows={2} InputProps={{ readOnly: true }} helperText={l('Tanlangan qadoq / o‘lchovdan avtomatik olinadi', 'Автоматически берётся из выбранной упаковки / единицы', 'Filled automatically from the selected package / unit')} />
+        <TextField sx={{ gridColumn: '1 / -1' }} label={l('Tavsif', 'Описание', 'Description')} value={edit?.description ?? ''} multiline minRows={2} InputProps={{ readOnly: true }} helperText={l('Tanlangan Fiscal MXIK nomidan avtomatik olinadi', 'Автоматически берётся из названия Fiscal MXIK', 'Filled automatically from the selected Fiscal MXIK name')} />
+        <Box gridColumn={{ md: '1 / -1' }} sx={{ mt: 1 }}>
+          <Typography variant="subtitle2" sx={{ mb: 2.25 }}>{l('Mahsulot rasmlari', 'Изображения товара', 'Product images')}</Typography>
+
+          {Array.isArray(edit?.images) && edit.images.length > 0 && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 2, rowGap: 2, mb: 2.5 }}>
+              {edit.images.map((image: Row) => (
+                <Box key={image.id} sx={{ position: 'relative', width: 104, height: 104, flexShrink: 0 }}>
+                  <Avatar variant="rounded" src={api.imageUrl(image.image_url)} sx={{ width: 104, height: 104, bgcolor: 'grey.100' }} />
+                  <Tooltip title={l('Saqlaganda rasm o‘chiriladi', 'Изображение будет удалено при сохранении', 'Image will be deleted when saved')}>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      disabled={editSaving}
+                      onClick={() => stageEditImageRemoval(Number(image.id))}
+                      sx={{
+                        position: 'absolute', right: 4, top: 4, width: 28, height: 28,
+                        bgcolor: 'rgba(255,255,255,.96)', border: '1px solid', borderColor: 'divider', boxShadow: 1,
+                        '&:hover': { bgcolor: 'background.paper' },
+                      }}
+                    >
+                      <DeleteRounded sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              ))}
+            </Box>
+          )}
+
+          <Button component="label" variant="outlined" disabled={editSaving} sx={{ mb: editImages.length > 0 ? 2.5 : 0 }}>
+            {l('Rasm qo‘shish', 'Добавить изображения', 'Add images')}
+            <input
+              hidden
+              multiple
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                const selected = Array.from(event.target.files || []);
+                setEditImages((current) => {
+                  const existing = new Set(current.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
+                  return [...current, ...selected.filter((file) => !existing.has(`${file.name}:${file.size}:${file.lastModified}`))];
+                });
+                event.currentTarget.value = '';
+              }}
+            />
+          </Button>
+
+          {editImages.length > 0 && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 2, rowGap: 2 }}>
+              {editImages.map((file, index) => (
+                <SelectedImageThumbnail
+                  key={`${file.name}-${file.lastModified}-${index}`}
+                  file={file}
+                  removeLabel={l('Tanlangan rasmni olib tashlash', 'Удалить выбранное изображение', 'Remove selected image')}
+                  onRemove={() => setEditImages((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                />
+              ))}
+            </Box>
+          )}
         </Box>
       </Box></DialogContent>
-      <DialogActions><Button onClick={() => setEdit(null)}>{l('Bekor qilish', 'Отмена', 'Cancel')}</Button><Button variant="contained" onClick={() => void saveEdit()}>{l('Saqlash', 'Сохранить', 'Save')}</Button></DialogActions>
+      <DialogActions sx={{ px: 3, pb: 3 }}>
+        <Button disabled={editSaving} onClick={closeEdit}>{l('Bekor qilish', 'Отмена', 'Cancel')}</Button>
+        <Button variant="contained" disabled={editSaving} onClick={() => void saveEdit()}>{l('Saqlash', 'Сохранить', 'Save')}</Button>
+      </DialogActions>
+      <Backdrop
+        open={editSaving}
+        sx={{ position: 'fixed', zIndex: 1600, bgcolor: 'rgba(255,255,255,0.82)', color: 'text.primary' }}
+      >
+        <Stack alignItems="center" spacing={2}>
+          <CircularProgress size={52} />
+          <Typography fontWeight={800}>{l('Saqlanmoqda...', 'Сохранение...', 'Saving...')}</Typography>
+        </Stack>
+      </Backdrop>
     </Dialog>
 
-    <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="md">
+    <Dialog open={createOpen} onClose={() => { if (!createSaving) { setCreateOpen(false); setCreateError(null); } }} fullWidth maxWidth="md">
       <DialogTitle>{l('Yangi mahsulot', 'Новый товар', 'New product')}</DialogTitle>
-      <DialogContent sx={{ pt: '20px!important' }}><Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, columnGap: 3, rowGap: 3, '& .MuiFormControl-root': { minWidth: 0 } }}>
+      <DialogContent sx={{ pt: '20px!important' }}>
+        {createError && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setCreateError(null)}>{createError}</Alert>}
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, columnGap: 3, rowGap: 3, '& .MuiFormControl-root': { minWidth: 0 } }}>
         <TextField select label={l('Kategoriya', 'Категория', 'Category')} value={form.category_id} onChange={(event) => setForm((value) => ({ ...value, category_id: event.target.value }))}>{categories.filter((category) => category.is_active).map((category) => <MenuItem key={category.id} value={category.id}>{category.name}</MenuItem>)}</TextField>
-        <TextField select label="Fiscal MXIK" value={form.fiscal_mxik_package_id} onChange={(event) => setForm((value) => ({ ...value, fiscal_mxik_package_id: event.target.value }))}>{packages.map((item) => <MenuItem key={item.fiscal_mxik_package_id} value={item.fiscal_mxik_package_id}>{item.mxik_code} · {item.package_name}</MenuItem>)}</TextField>
+        <Autocomplete
+          options={mxikDisplayOptions}
+          value={createMxik}
+          loading={mxikLoading}
+          filterOptions={(options) => options}
+          getOptionLabel={(option) => option?.__mxikLoading ? '' : String(option?.mxik_name ?? '')}
+          isOptionEqualToValue={(option, value) => !option?.__mxikLoading && Number(option.mxik_id) === Number(value.mxik_id)}
+          onInputChange={(_, value, reason) => { if (reason === 'input' || reason === 'clear') setMxikKeyword(value); }}
+          onChange={(_, value) => { if (!value?.__mxikLoading) void loadCreatePackages(value); }}
+          noOptionsText={l('MXIK topilmadi', 'MXIK не найден', 'No MXIK found')}
+          loadingText={l('Qidirilmoqda...', 'Поиск...', 'Searching...')}
+          slotProps={{ listbox: { onScroll: handleMxikScroll } }}
+          renderOption={(props, option) => option?.__mxikLoading
+            ? <li {...props} key="mxik-loading" aria-disabled="true" style={{ justifyContent: 'center', pointerEvents: 'none' }}><CircularProgress size={22} /></li>
+            : <li {...props} key={option.mxik_id}>{option.mxik_name}</li>}
+          renderInput={(params) => <TextField {...params} label="Fiscal MXIK" />}
+        />
+        <TextField select label={l('Qadoq / o‘lchov', 'Упаковка / единица', 'Package / unit')} value={form.fiscal_mxik_package_id} disabled={!createMxik || createPackagesLoading} onChange={(event) => selectCreatePackage(event.target.value)}>
+          {createPackages.map((item) => <MenuItem key={item.fiscal_mxik_package_id} value={item.fiscal_mxik_package_id}>{item.package_name}</MenuItem>)}
+        </TextField>
         {formField('name', l('Nomi', 'Название', 'Name'))}{formField('brand', l('Brend', 'Бренд', 'Brand'))}
         {formField('price', l('Narx', 'Цена', 'Price'), 'number')}{formField('subscription_price', l('Obuna narxi', 'Цена подписки', 'Subscription price'), 'number')}
         {formField('stock_quantity', l('Ombor', 'Остаток', 'Stock'), 'number')}{formField('vat_percent', 'VAT %', 'number')}
         {formField('sku', 'SKU')}{formField('barcode', l('Shtrix kod', 'Штрихкод', 'Barcode'))}{formField('weight_gram', l('Og‘irlik (g)', 'Вес (г)', 'Weight (g)'), 'number')}
-        <FormControlLabel control={<Checkbox checked={Boolean(form.is_featured)} onChange={(event) => setForm((value) => ({ ...value, is_featured: event.target.checked }))} />} label={l('Tavsiya etilgan', 'Рекомендуемый', 'Featured')} />
-        <TextField label={l('Qisqa tavsif', 'Краткое описание', 'Short description')} value={form.short_description} onChange={(event) => setForm((value) => ({ ...value, short_description: event.target.value }))} multiline minRows={2} />
-        <TextField label={l('Tavsif', 'Описание', 'Description')} value={form.description} onChange={(event) => setForm((value) => ({ ...value, description: event.target.value }))} multiline minRows={2} />
+        <TextField sx={{ gridColumn: '1 / -1' }} label={l('Qisqa tavsif', 'Краткое описание', 'Short description')} value={form.short_description} multiline minRows={2} InputProps={{ readOnly: true }} helperText={l('Tanlangan qadoq / o‘lchovdan avtomatik olinadi', 'Автоматически берётся из выбранной упаковки / единицы', 'Filled automatically from the selected package / unit')} />
+        <TextField sx={{ gridColumn: '1 / -1' }} label={l('Tavsif', 'Описание', 'Description')} value={form.description} multiline minRows={2} InputProps={{ readOnly: true }} helperText={l('Tanlangan Fiscal MXIK nomidan avtomatik olinadi', 'Автоматически берётся из названия Fiscal MXIK', 'Filled automatically from the selected Fiscal MXIK name')} />
         <Box sx={{ gridColumn: '1 / -1' }}>
           <Button component="label" variant="outlined">
             {l('Rasmlarni tanlash', 'Выбрать изображения', 'Choose images')}
@@ -294,7 +637,26 @@ export function ProductsPage() {
           </>}
         </Box>
       </Box></DialogContent>
-      <DialogActions><Button onClick={() => setCreateOpen(false)}>{l('Bekor qilish', 'Отмена', 'Cancel')}</Button><Button variant="contained" disabled={!form.name || !form.category_id || !form.fiscal_mxik_package_id || !form.price} onClick={() => void createProduct()}>{l('Yaratish', 'Создать', 'Create')}</Button></DialogActions>
+      <DialogActions sx={{ px: 3, pb: 3 }}>
+        <Button disabled={createSaving} onClick={() => { setCreateOpen(false); setCreateError(null); }}>{l('Bekor qilish', 'Отмена', 'Cancel')}</Button>
+        <Button variant="contained" disabled={createSaving} onClick={() => void createProduct()}>
+          {l('Saqlash', 'Сохранить', 'Save')}
+        </Button>
+      </DialogActions>
+      <Backdrop
+        open={createSaving}
+        sx={{
+          position: 'fixed',
+          zIndex: 1600,
+          bgcolor: 'rgba(255,255,255,0.82)',
+          color: 'text.primary',
+        }}
+      >
+        <Stack alignItems="center" spacing={2}>
+          <CircularProgress size={52} />
+          <Typography fontWeight={800}>{l('Saqlanmoqda...', 'Сохранение...', 'Saving...')}</Typography>
+        </Stack>
+      </Backdrop>
     </Dialog>
     {confirmDialog}
   </>;
@@ -381,26 +743,250 @@ export function ReviewsPage(){
 }
 
 export function PromotionsPage(){
-  const token=useToken(),l=useL(),enumLabel=useEnumLabel();
+  const token=useToken(),l=useL();
   const { confirm, confirmDialog }=useConfirm();
-  const[tab,setTab]=useState(0),[promos,setPromos]=useState<Row[]>([]),[banners,setBanners]=useState<Row[]>([]),[coupons,setCoupons]=useState<Row[]>([]),[products,setProducts]=useState<Row[]>([]),[edit,setEdit]=useState<Row|null>(null),[editCoupon,setEditCoupon]=useState<Row|null>(null),[bannerIds,setBannerIds]=useState<number[]>([]),[error,setError]=useState<string|null>(null);
-  const load=useCallback(async()=>{try{const[p,b,c,pr]=await Promise.all([api.listPromotions(token),api.listBanners(token),api.listCoupons(token),api.listProducts(token,{page:1,page_size:100,active:true})]);setPromos(p);setBanners(b);setCoupons(c);setProducts(pr.items);setBannerIds(b.map(x=>Number(x.product_id)));setError(null);}catch(e){setError(e instanceof Error?e.message:'Error')}},[token]);useEffect(()=>{void load()},[load]);
-  const savePromo=async()=>{if(!edit)return;if(edit.promotion_id&&edit.use_yn==='N'){const ok=await confirm({danger:true,message:l('Ushbu aksiyani faol emas holatda saqlashga ishonchingiz komilmi?','Вы уверены, что хотите сохранить эту акцию неактивной?','Are you sure you want to save this promotion as inactive?')});if(!ok)return;}try{if(edit.promotion_id)await api.updatePromotion(token,edit.promotion_id,edit);else await api.createPromotion(token,edit);setEdit(null);await load()}catch(e){setError(e instanceof Error?e.message:'Error')}};
-  const saveBanners=async()=>{const ok=await confirm({message:l('Bosh sahifa bannerlarini yangilashga ishonchingiz komilmi?','Вы уверены, что хотите обновить баннеры главной страницы?','Are you sure you want to update the home page banners?')});if(!ok)return;try{await api.replaceBanners(token,bannerIds.map((id,i)=>({product_id:id,sort_order:i+1})));await load()}catch(e){setError(e instanceof Error?e.message:'Error')}};
-  const blankCoupon=()=>({coupon_id:0,coupon_name:'',coupon_type:'AMOUNT',discount_amount:0,discount_rate:0,start_date:'',end_date:'',use_yn:'Y'});
-  const saveCoupon=async()=>{if(!editCoupon)return;if(editCoupon.coupon_id&&editCoupon.use_yn==='N'){const ok=await confirm({danger:true,message:l('Ushbu kuponni faol emas holatda saqlashga ishonchingiz komilmi?','Вы уверены, что хотите сохранить этот купон неактивным?','Are you sure you want to save this coupon as inactive?')});if(!ok)return;}try{if(editCoupon.coupon_id)await api.updateCoupon(token,editCoupon.coupon_id,editCoupon);else await api.createCoupon(token,editCoupon);setEditCoupon(null);await load()}catch(e){setError(e instanceof Error?e.message:'Error')}};
-  const actionLabel=tab===0?l('Aksiya qo‘shish','Добавить акцию','Add promotion'):tab===2?l('Kupon qo‘shish','Добавить купон','Add coupon'):undefined;
-  const action=tab===0?()=>setEdit({promotion_id:0,title:'',content:'',image_url:'',start_date:'',end_date:'',use_yn:'Y'}):tab===2?()=>setEditCoupon(blankCoupon()):undefined;
+  const [banners,setBanners]=useState<Row[]>([]);
+  const [products,setProducts]=useState<Row[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [error,setError]=useState<string|null>(null);
+  const [editIndex,setEditIndex]=useState<number|null>(null);
+  const [editProductId,setEditProductId]=useState<number|string>('');
+  const [selectedProductIds,setSelectedProductIds]=useState<number[]>([]);
+  const [editOpen,setEditOpen]=useState(false);
+
+  const load=useCallback(async()=>{
+    setLoading(true);
+    setError(null);
+    try{
+      const firstProducts=await api.listProducts(token,{page:1,page_size:100,active:true});
+      let allProducts=[...(firstProducts.items||[])];
+      const total=Number(firstProducts.total||allProducts.length);
+      const pages=Math.ceil(total/100);
+      for(let page=2;page<=pages;page++){
+        const next=await api.listProducts(token,{page,page_size:100,active:true});
+        allProducts=[...allProducts,...(next.items||[])];
+      }
+      const bannerRows=await api.listBanners(token);
+      const activeProductIds=new Set(allProducts.map(product=>Number(product.id)));
+      const visibleBannerRows=(bannerRows||[])
+        .filter(row=>Number(row.is_active??1)===1 && activeProductIds.has(Number(row.product_id)))
+        .sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0));
+      setProducts(allProducts);
+      setBanners(visibleBannerRows);
+    }catch(e){
+      setError(e instanceof Error?e.message:'Error');
+    }finally{
+      setLoading(false);
+    }
+  },[token]);
+
+  useEffect(()=>{void load()},[load]);
+
+  const saveBannerList=async(next:Row[])=>{
+    setSaving(true);
+    setError(null);
+    try{
+      await api.replaceBanners(token,next.map((item,index)=>({product_id:Number(item.product_id),sort_order:index+1})));
+      await load();
+      return true;
+    }catch(e){
+      setError(e instanceof Error?e.message:'Error');
+      return false;
+    }finally{
+      setSaving(false);
+    }
+  };
+
+  const openAdd=()=>{
+    setEditIndex(null);
+    setEditProductId('');
+    setSelectedProductIds([]);
+    setEditOpen(true);
+  };
+
+  const openEdit=(index:number)=>{
+    setEditIndex(index);
+    setEditProductId(Number(banners[index].product_id));
+    setSelectedProductIds([]);
+    setEditOpen(true);
+  };
+
+  const saveEdit=async()=>{
+    if(editIndex===null){
+      if(selectedProductIds.length===0)return;
+      const selectedProducts=selectedProductIds
+        .map(id=>products.find(product=>Number(product.id)===Number(id)))
+        .filter(Boolean) as Row[];
+      if(selectedProducts.length===0)return;
+      const ok=await confirm({message:selectedProducts.length===1
+        ?l('Tanlangan mahsulotni bosh sahifa banneriga qo‘shishga ishonchingiz komilmi?','Добавить выбранный товар в баннер главной страницы?','Add the selected product to the home page banner?')
+        :l(`${selectedProducts.length} ta mahsulotni bosh sahifa banneriga qo‘shishga ishonchingiz komilmi?`,`Добавить ${selectedProducts.length} товаров в баннер главной страницы?`,`Add ${selectedProducts.length} products to the home page banner?`)});
+      if(!ok)return;
+      const next=[...banners,...selectedProducts.map((selected,index)=>({
+        product_id:Number(selected.id),
+        product_name:selected.name,
+        image_url:selected.image_url,
+        price:selected.price,
+        sort_order:banners.length+index+1,
+        is_active:true,
+      }))];
+      const saved=await saveBannerList(next);
+      if(saved){setEditOpen(false);setSelectedProductIds([]);}
+      return;
+    }
+
+    if(!editProductId)return;
+    const selected=products.find(product=>Number(product.id)===Number(editProductId));
+    if(!selected)return;
+    const duplicateIndex=banners.findIndex((banner,index)=>Number(banner.product_id)===Number(editProductId) && index!==editIndex);
+    if(duplicateIndex>=0){
+      setError(l('Bu mahsulot bannerda allaqachon mavjud.','Этот товар уже добавлен в баннер.','This product is already in the banner.'));
+      return;
+    }
+    const ok=await confirm({message:l('Ushbu banner mahsulotini almashtirishga ishonchingiz komilmi?','Заменить товар в этом баннере?','Replace this banner product?')});
+    if(!ok)return;
+    const next=[...banners];
+    next[editIndex]={
+      ...next[editIndex],
+      product_id:Number(selected.id),
+      product_name:selected.name,
+      image_url:selected.image_url,
+      price:selected.price,
+      sort_order:editIndex+1,
+      is_active:true,
+    };
+    const saved=await saveBannerList(next);
+    if(saved){setEditOpen(false);setEditIndex(null);setEditProductId('');}
+  };
+
+  const removeBanner=async(index:number)=>{
+    const item=banners[index];
+    const ok=await confirm({danger:true,message:l(`"${item.product_name||''}" mahsulotini bannerdan olib tashlashga ishonchingiz komilmi?`,`Удалить товар «${item.product_name||''}» из баннера?`,`Remove "${item.product_name||''}" from the banner?`)});
+    if(!ok)return;
+    await saveBannerList(banners.filter((_,i)=>i!==index));
+  };
+
+  const moveBanner=async(index:number,direction:-1|1)=>{
+    const target=index+direction;
+    if(target<0||target>=banners.length)return;
+    const next=[...banners];
+    [next[index],next[target]]=[next[target],next[index]];
+    await saveBannerList(next);
+  };
+
+  const bannerProductIds=new Set(banners.map(banner=>Number(banner.product_id)));
+  const addableProducts=products.filter(product=>!bannerProductIds.has(Number(product.id)));
+  const editSelectableProducts=products.filter(product=>
+    Number(product.id)===Number(editProductId)||!bannerProductIds.has(Number(product.id))
+  );
+  const selectedProducts=products.filter(product=>selectedProductIds.includes(Number(product.id)));
+
   return <>
-    <PageTitle title={l('Marketing','Маркетинг','Marketing')} subtitle={l('Aksiyalar, bosh sahifa bannerlari va kuponlarni boshqaring.','Управляйте акциями, баннерами и купонами.','Manage promotions, home banners and coupons.')} actionLabel={actionLabel} onAction={action}/>
-    <Tabs value={tab} onChange={(_,v)=>setTab(v)} sx={{mb:3}}><Tab label={l('Aksiyalar','Акции','Promotions')}/><Tab label={l('Bannerlar','Баннеры','Banners')}/><Tab label={l('Kuponlar','Купоны','Coupons')}/></Tabs>
-    {error&&<Alert severity="error" sx={{mb:2}}>{error}</Alert>}
-    {tab===0&&<TablePanel><Table><TableHead><TableRow><TableCell>{l('Nomi','Название','Title')}</TableCell><TableCell>{l('Boshlanish','Начало','Start')}</TableCell><TableCell>{l('Tugash','Конец','End')}</TableCell><TableCell>{l('Holat','Статус','Status')}</TableCell><TableCell/></TableRow></TableHead><TableBody>{promos.map(r=><TableRow key={r.promotion_id}><TableCell>{r.title}</TableCell><TableCell>{dateTime(r.start_date)}</TableCell><TableCell>{dateTime(r.end_date)}</TableCell><TableCell><StatusChip value={r.use_yn==='Y'?'ACTIVE':'INACTIVE'}/></TableCell><TableCell><IconButton onClick={()=>setEdit({...r})}><EditRounded/></IconButton></TableCell></TableRow>)}</TableBody></Table></TablePanel>}
-    {tab===1&&<Panel sx={{p:3}}><Typography fontWeight={800} mb={.5}>{l('Bosh sahifada ko‘rsatiladigan mahsulotlar','Товары для главного баннера','Products shown in home banner')}</Typography><Typography color="text.secondary" mb={2}>{l('Belgilash tartibi banner tartibiga aylanadi.','Порядок выбора становится порядком баннеров.','Selected products are saved as banner items.')}</Typography><Stack gap={1}>{products.map(p=><FormControlLabel key={p.id} control={<Checkbox checked={bannerIds.includes(Number(p.id))} onChange={e=>setBannerIds(ids=>e.target.checked?[...ids,Number(p.id)]:ids.filter(id=>id!==Number(p.id)))}/>} label={<Stack direction="row" alignItems="center" gap={1}><Avatar variant="rounded" src={api.imageUrl(p.image_url)} sx={{width:38,height:38}}/><span>{p.name} · {money(p.price)}</span></Stack>}/>)}</Stack><Button variant="contained" sx={{mt:2}} onClick={()=>void saveBanners()}>{l('Bannerlarni saqlash','Сохранить баннеры','Save banners')}</Button></Panel>}
-    {tab===2&&<TablePanel><Table><TableHead><TableRow><TableCell>{l('Nomi','Название','Name')}</TableCell><TableCell>{l('Turi','Тип','Type')}</TableCell><TableCell>{l('Chegirma','Скидка','Discount')}</TableCell><TableCell>{l('Muddat','Период','Period')}</TableCell><TableCell>{l('Holat','Статус','Status')}</TableCell><TableCell/></TableRow></TableHead><TableBody>{coupons.map(c=><TableRow key={c.coupon_id}><TableCell>{c.coupon_name}</TableCell><TableCell>{enumLabel(c.coupon_type)}</TableCell><TableCell>{c.coupon_type==='RATE'?`${c.discount_rate||0}%`:money(c.discount_amount)}</TableCell><TableCell>{String(c.start_date||'').slice(0,10)} — {String(c.end_date||'').slice(0,10)}</TableCell><TableCell><StatusChip value={c.use_yn==='Y'?'ACTIVE':'INACTIVE'}/></TableCell><TableCell><IconButton onClick={()=>setEditCoupon({...c})}><EditRounded/></IconButton></TableCell></TableRow>)}</TableBody></Table></TablePanel>}
+    <PageTitle title={l('Banner','Баннер','Banner')}/>
+    {error&&<Alert severity="error" sx={{mb:3}} onClose={()=>setError(null)}>{error}</Alert>}
+
+    <LoadState loading={loading} error={null} onRetry={load}>
+      <Panel sx={{overflow:'hidden'}}>
+        <Box sx={{p:{xs:2.5,md:3}}}>
+          <Stack direction={{xs:'column',sm:'row'}} justifyContent="space-between" alignItems={{xs:'stretch',sm:'center'}} spacing={3}>
+            <Box>
+              <Stack direction="row" alignItems="baseline" spacing={1.5} flexWrap="wrap">
+                <Typography fontWeight={850} fontSize={20}>{l('Bosh sahifa banneri','Баннер главной страницы','Home page banner')}</Typography>
+                <Typography color="text.secondary" fontWeight={700}>{banners.length} {l('ta mahsulot','товаров','products')}</Typography>
+              </Stack>
+              <Typography color="text.secondary" mt={0.75}>{l('Quyidagi mahsulotlar mobil ilovaning bosh sahifasida banner sifatida ko‘rsatiladi.','Эти товары отображаются в баннере на главной странице мобильного приложения.','These products are displayed in the mobile app home-page banner.')}</Typography>
+            </Box>
+            <Button variant="contained" startIcon={<AddRounded/>} onClick={openAdd} disabled={saving||addableProducts.length===0} sx={{flexShrink:0,alignSelf:{xs:'stretch',sm:'center'}}}>
+              {l('Mahsulotlar qo‘shish','Добавить товары','Add products')}
+            </Button>
+          </Stack>
+        </Box>
+
+        <Box sx={{borderTop:'1px solid',borderColor:'divider'}}>
+          {banners.length===0
+            ?<Box sx={{py:8,px:3,textAlign:'center'}}>
+              <Typography fontWeight={800} fontSize={18}>{l('Banner hozircha bo‘sh','Баннер пока пуст','The banner is empty')}</Typography>
+              <Typography color="text.secondary" mt={1}>{l('Yuqoridagi “Mahsulotlar qo‘shish” tugmasi orqali bir yoki bir nechta mahsulot tanlang.','Используйте кнопку «Добавить товары» выше, чтобы выбрать один или несколько товаров.','Use the “Add products” button above to select one or more products.')}</Typography>
+            </Box>
+            :<Box sx={{overflowX:'auto'}}><Table>
+              <TableHead><TableRow><TableCell width={70}>#</TableCell><TableCell>{l('Mahsulot','Товар','Product')}</TableCell><TableCell>{l('Narx','Цена','Price')}</TableCell><TableCell width={110}>{l('Tartib','Порядок','Order')}</TableCell><TableCell align="right" width={230}>{l('Amallar','Действия','Actions')}</TableCell></TableRow></TableHead>
+              <TableBody>{banners.map((banner,index)=><TableRow key={banner.id??`${banner.product_id}-${index}`} hover onClick={()=>openEdit(index)} sx={{cursor:'pointer'}}>
+                <TableCell>{index+1}</TableCell>
+                <TableCell><Stack direction="row" alignItems="center" sx={{columnGap:2.5}}>
+                  <Avatar variant="rounded" src={api.imageUrl(banner.image_url)} sx={{width:62,height:62,bgcolor:'grey.100',flexShrink:0}}/>
+                  <Box><Typography fontWeight={750}>{banner.product_name||'-'}</Typography><Typography variant="body2" color="text.secondary">ID: {banner.product_id}</Typography></Box>
+                </Stack></TableCell>
+                <TableCell>{money(products.find(product=>Number(product.id)===Number(banner.product_id))?.price)}</TableCell>
+                <TableCell>{index+1}</TableCell>
+                <TableCell align="right" onClick={event=>event.stopPropagation()}>
+                  <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
+                    <Tooltip title={l('Yuqoriga','Вверх','Move up')}><span><Button size="small" disabled={saving||index===0} onClick={()=>void moveBanner(index,-1)}>↑</Button></span></Tooltip>
+                    <Tooltip title={l('Pastga','Вниз','Move down')}><span><Button size="small" disabled={saving||index===banners.length-1} onClick={()=>void moveBanner(index,1)}>↓</Button></span></Tooltip>
+                    <Tooltip title={l('Tahrirlash','Редактировать','Edit')}><IconButton disabled={saving} onClick={()=>openEdit(index)}><EditRounded/></IconButton></Tooltip>
+                    <Tooltip title={l('Olib tashlash','Удалить','Remove')}><IconButton color="error" disabled={saving} onClick={()=>void removeBanner(index)}><DeleteRounded/></IconButton></Tooltip>
+                  </Stack>
+                </TableCell>
+              </TableRow>)}</TableBody>
+            </Table></Box>}
+        </Box>
+      </Panel>
+    </LoadState>
+
     {confirmDialog}
-    <Dialog open={!!edit} onClose={()=>setEdit(null)} fullWidth maxWidth="sm"><DialogTitle>{edit?.promotion_id?l('Aksiyani tahrirlash','Редактировать акцию','Edit promotion'):l('Yangi aksiya','Новая акция','New promotion')}</DialogTitle><DialogContent sx={{pt:'20px!important'}}><Stack spacing={3}><TextField label={l('Nomi','Название','Title')} value={edit?.title||''} onChange={e=>setEdit(v=>v&&({...v,title:e.target.value}))}/><TextField multiline label={l('Tavsif','Описание','Content')} value={edit?.content||''} onChange={e=>setEdit(v=>v&&({...v,content:e.target.value}))}/><TextField label={l('Rasm URL','URL изображения','Image URL')} value={edit?.image_url||''} onChange={e=>setEdit(v=>v&&({...v,image_url:e.target.value}))}/><Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5}><TextField fullWidth type="date" InputLabelProps={{shrink:true}} label={l('Boshlanish','Начало','Start')} value={String(edit?.start_date||'').slice(0,10)} onChange={e=>setEdit(v=>v&&({...v,start_date:e.target.value}))}/><TextField fullWidth type="date" InputLabelProps={{shrink:true}} label={l('Tugash','Конец','End')} value={String(edit?.end_date||'').slice(0,10)} onChange={e=>setEdit(v=>v&&({...v,end_date:e.target.value}))}/></Stack><FormControlLabel control={<Checkbox checked={edit?.use_yn!=='N'} onChange={e=>setEdit(v=>v&&({...v,use_yn:e.target.checked?'Y':'N'}))}/>} label={l('Faol','Активна','Active')}/></Stack></DialogContent><DialogActions><Button onClick={()=>setEdit(null)}>{l('Bekor qilish','Отмена','Cancel')}</Button><Button variant="contained" onClick={()=>void savePromo()}>{l('Saqlash','Сохранить','Save')}</Button></DialogActions></Dialog>
-    <Dialog open={!!editCoupon} onClose={()=>setEditCoupon(null)} fullWidth maxWidth="sm"><DialogTitle>{editCoupon?.coupon_id?l('Kuponni tahrirlash','Редактировать купон','Edit coupon'):l('Yangi kupon','Новый купон','New coupon')}</DialogTitle><DialogContent sx={{pt:'20px!important'}}><Stack spacing={3}><TextField label={l('Nomi','Название','Name')} value={editCoupon?.coupon_name||''} onChange={e=>setEditCoupon(v=>v&&({...v,coupon_name:e.target.value}))}/><TextField select label={l('Chegirma turi','Тип скидки','Discount type')} value={editCoupon?.coupon_type||'AMOUNT'} onChange={e=>setEditCoupon(v=>v&&({...v,coupon_type:e.target.value}))}><MenuItem value="AMOUNT">{enumLabel('AMOUNT')}</MenuItem><MenuItem value="RATE">{enumLabel('RATE')}</MenuItem></TextField>{editCoupon?.coupon_type==='RATE'?<TextField type="number" label={l('Foiz','Процент','Percent')} value={editCoupon?.discount_rate??0} onChange={e=>setEditCoupon(v=>v&&({...v,discount_rate:Number(e.target.value)}))}/>:<TextField type="number" label={l('Chegirma summasi','Сумма скидки','Discount amount')} value={editCoupon?.discount_amount??0} onChange={e=>setEditCoupon(v=>v&&({...v,discount_amount:Number(e.target.value)}))}/>}<Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5}><TextField fullWidth type="date" InputLabelProps={{shrink:true}} label={l('Boshlanish','Начало','Start')} value={String(editCoupon?.start_date||'').slice(0,10)} onChange={e=>setEditCoupon(v=>v&&({...v,start_date:e.target.value}))}/><TextField fullWidth type="date" InputLabelProps={{shrink:true}} label={l('Tugash','Конец','End')} value={String(editCoupon?.end_date||'').slice(0,10)} onChange={e=>setEditCoupon(v=>v&&({...v,end_date:e.target.value}))}/></Stack><FormControlLabel control={<Checkbox checked={editCoupon?.use_yn!=='N'} onChange={e=>setEditCoupon(v=>v&&({...v,use_yn:e.target.checked?'Y':'N'}))}/>} label={l('Faol','Активен','Active')}/></Stack></DialogContent><DialogActions><Button onClick={()=>setEditCoupon(null)}>{l('Bekor qilish','Отмена','Cancel')}</Button><Button variant="contained" disabled={!editCoupon?.coupon_name||!editCoupon?.start_date||!editCoupon?.end_date} onClick={()=>void saveCoupon()}>{l('Saqlash','Сохранить','Save')}</Button></DialogActions></Dialog>
+
+    <Dialog open={editOpen} onClose={()=>{if(!saving)setEditOpen(false)}} fullWidth maxWidth="md">
+      <DialogTitle>{editIndex===null?l('Bannerga mahsulotlar qo‘shish','Добавить товары в баннер','Add products to banner'):l('Banner mahsulotini tahrirlash','Редактировать товар баннера','Edit banner product')}</DialogTitle>
+      <DialogContent sx={{pt:'20px!important'}}>
+        {editIndex===null?<>
+          <Autocomplete
+            multiple
+            disableCloseOnSelect
+            options={addableProducts}
+            value={selectedProducts}
+            onChange={(_,value)=>setSelectedProductIds(value.map(product=>Number(product.id)))}
+            getOptionLabel={option=>String(option.name||'')}
+            isOptionEqualToValue={(option,value)=>Number(option.id)===Number(value.id)}
+            disabled={saving}
+            noOptionsText={l('Qo‘shish uchun boshqa mahsulot yo‘q','Нет других товаров для добавления','No more products to add')}
+            renderOption={(props,product,{selected})=><li {...props} key={product.id}>
+              <Checkbox checked={selected} sx={{mr:1}}/>
+              <Avatar variant="rounded" src={api.imageUrl(product.image_url)} sx={{width:44,height:44,bgcolor:'grey.100',mr:2}}/>
+              <Box><Typography>{product.name}</Typography><Typography variant="caption" color="text.secondary">{money(product.price)}</Typography></Box>
+            </li>}
+            renderInput={params=><TextField {...params} label={l('Mahsulotlarni tanlang','Выберите товары','Select products')} placeholder={l('Qidirish...','Поиск...','Search...')}/>}
+          />
+          {selectedProducts.length>0&&<Box mt={3}>
+            <Typography fontWeight={800} mb={1.5}>{selectedProducts.length} {l('ta mahsulot tanlandi','товаров выбрано','products selected')}</Typography>
+            <Stack spacing={1.25}>{selectedProducts.map(product=><Box key={product.id} sx={{display:'flex',alignItems:'center',p:1.25,border:'1px solid',borderColor:'divider',borderRadius:2}}>
+              <Avatar variant="rounded" src={api.imageUrl(product.image_url)} sx={{width:52,height:52,bgcolor:'grey.100',mr:2,flexShrink:0}}/>
+              <Box sx={{minWidth:0,flex:1}}><Typography fontWeight={750} noWrap>{product.name}</Typography><Typography variant="body2" color="text.secondary">{money(product.price)}</Typography></Box>
+              <IconButton size="small" color="error" onClick={()=>setSelectedProductIds(ids=>ids.filter(id=>id!==Number(product.id)))} disabled={saving}><DeleteRounded fontSize="small"/></IconButton>
+            </Box>)}</Stack>
+          </Box>}
+        </>:<>
+          <Autocomplete
+            options={editSelectableProducts}
+            value={products.find(product=>Number(product.id)===Number(editProductId))||null}
+            onChange={(_,value)=>setEditProductId(value?Number(value.id):'')}
+            getOptionLabel={option=>String(option.name||'')}
+            isOptionEqualToValue={(option,value)=>Number(option.id)===Number(value.id)}
+            disabled={saving}
+            renderOption={(props,product)=><li {...props} key={product.id}>
+              <Avatar variant="rounded" src={api.imageUrl(product.image_url)} sx={{width:44,height:44,bgcolor:'grey.100',mr:2}}/>
+              <Box><Typography>{product.name}</Typography><Typography variant="caption" color="text.secondary">{money(product.price)}</Typography></Box>
+            </li>}
+            renderInput={params=><TextField {...params} label={l('Mahsulot','Товар','Product')} placeholder={l('Qidirish...','Поиск...','Search...')}/>}
+          />
+        </>}
+      </DialogContent>
+      <DialogActions>
+        <Button disabled={saving} onClick={()=>setEditOpen(false)}>{l('Bekor qilish','Отмена','Cancel')}</Button>
+        <Button variant="contained" disabled={saving||(editIndex===null?selectedProductIds.length===0:!editProductId)} onClick={()=>void saveEdit()}>{saving?l('Saqlanmoqda...','Сохранение...','Saving...'):l('Saqlash','Сохранить','Save')}</Button>
+      </DialogActions>
+    </Dialog>
+
+    <Backdrop open={saving} sx={{zIndex:theme=>theme.zIndex.modal+20,color:'#fff'}}><Stack alignItems="center" spacing={2}><CircularProgress color="inherit"/><Typography fontWeight={800}>{l('Saqlanmoqda...','Сохранение...','Saving...')}</Typography></Stack></Backdrop>
   </>;
 }
 
