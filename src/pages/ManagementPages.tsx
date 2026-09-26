@@ -369,6 +369,81 @@ export function ProductsPage() {
     }
   };
 
+  const createProduct = async () => {
+    if (createSaving) return;
+    setCreateError(null);
+
+    const missingRequired = !form.category_id || !form.fiscal_mxik_package_id || !String(form.name ?? '').trim() || form.price === '' || form.price == null;
+    if (missingRequired) {
+      setCreateError(l(
+        'Majburiy maydonlarni to‘ldiring: kategoriya, Fiscal MXIK/qadoq, mahsulot nomi va narx.',
+        'Заполните обязательные поля: категория, Fiscal MXIK/упаковка, название товара и цена.',
+        'Please fill the required fields: category, Fiscal MXIK/package, product name and price.',
+      ));
+      return;
+    }
+
+    setCreateSaving(true);
+    try {
+      await api.createProduct(token, {
+        ...form,
+        category_id: Number(form.category_id),
+        fiscal_mxik_package_id: Number(form.fiscal_mxik_package_id),
+        vat_percent: Number(form.vat_percent),
+        name: String(form.name).trim(),
+        sku: String(form.sku ?? '').trim() || null,
+        barcode: String(form.barcode ?? '').trim() || null,
+        brand: String(form.brand ?? '').trim() || null,
+        price: Number(form.price),
+        subscription_price: form.subscription_price === '' ? null : Number(form.subscription_price),
+        stock_quantity: Number(form.stock_quantity),
+        weight_gram: form.weight_gram === '' ? null : Number(form.weight_gram),
+      }, images);
+      setCreateOpen(false);
+      setForm(blankProduct());
+      setImages([]);
+      setCreateMxik(null);
+      setCreatePackages([]);
+      setMxikKeyword('');
+      setCreateError(null);
+      void x.reload();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message === 'NETWORK_ERROR' || message === 'Failed to fetch') {
+        setCreateError(l(
+          'Server bilan ulanishda xatolik yuz berdi. Internet/server holatini va rasm hajmini tekshirib, qayta urinib ko‘ring.',
+          'Ошибка соединения с сервером. Проверьте соединение/сервер и размер изображения, затем попробуйте снова.',
+          'Could not connect to the server. Check the connection/server and image size, then try again.',
+        ));
+      } else if (message.startsWith('PRODUCT_CREATED_IMAGE_UPLOAD_FAILED:')) {
+        const parts = message.split(':');
+        const reason = parts.slice(2).join(':').trim();
+        const baseMessage = l(
+          'Mahsulot yaratildi, lekin rasmni yuklashda xatolik yuz berdi.',
+          'Товар создан, но при загрузке изображения произошла ошибка.',
+          'The product was created, but an image upload failed.',
+        );
+        setCreateError(reason ? `${baseMessage} ${reason}` : baseMessage);
+      } else if (['IMAGE_READ_FAILED','IMAGE_PROCESSING_FAILED','ONLY_IMAGE_FILES_ALLOWED'].includes(message)) {
+        setCreateError(l(
+          'Rasmni tayyorlashda xatolik yuz berdi. Boshqa PNG/JPG rasm tanlab qayta urinib ko‘ring.',
+          'Не удалось подготовить изображение. Выберите другой PNG/JPG файл и попробуйте снова.',
+          'The image could not be prepared. Choose another PNG/JPG image and try again.',
+        ));
+      } else if (message.toLowerCase().includes('too large') || message.includes('20 MB')) {
+        setCreateError(l(
+          'Rasm server limitidan katta bo‘lib qoldi. Boshqa rasm bilan qayta urinib ko‘ring.',
+          'После обработки изображение всё ещё превышает лимит сервера. Попробуйте другое изображение.',
+          'The processed image is still above the server limit. Please try another image.',
+        ));
+      } else {
+        setCreateError(message || l('Mahsulotni saqlashda xatolik yuz berdi.', 'Произошла ошибка при сохранении товара.', 'An error occurred while saving the product.'));
+      }
+    } finally {
+      setCreateSaving(false);
+    }
+  };
+
   const stageEditImageRemoval = (imageId: number) => {
     if (!edit || editSaving) return;
     setEdit((current) => current && ({
@@ -384,7 +459,7 @@ export function ProductsPage() {
     setActionError(null);
     setProductActionId(productId);
     try {
-      await api.updateProduct(token, productId, { is_active: nextActive });
+      await api.updateProductInline(token, productId, { is_active: nextActive });
       const filteredOut = (active === 'true' && !nextActive) || (active === 'false' && nextActive);
       if (filteredOut) x.removeItem(productId);
       else x.updateItem(productId, (current) => ({ ...current, is_active: nextActive }));
@@ -709,13 +784,14 @@ export function DeliveryPage(){
   const x=usePaged(loader);const[workers,setWorkers]=useState<Row[]>([]);
   const loadWorkers=useCallback(async()=>{try{setWorkers(await api.listDeliveryWorkers(token));setError(null);}catch(e){setError(e instanceof Error?e.message:'Error')}},[token]);useEffect(()=>{void loadWorkers()},[loadWorkers]);
   const updateJob=async(r:Row,data:Row)=>{const nextStatus=data.status?enumLabel(data.status):null;const ok=await confirm({danger:['FAILED','CANCELLED'].includes(String(data.status||'')),message:nextStatus?l(`Yetkazma ma’lumotini o‘zgartirib, holatini ${nextStatus} qilishga ishonchingiz komilmi?`,`Вы уверены, что хотите изменить доставку и установить статус «${nextStatus}»?`,`Are you sure you want to update the delivery and set its status to ${nextStatus}?`):l('Yetkazmaga biriktirilgan kuryerni o‘zgartirishga ishonchingiz komilmi?','Вы уверены, что хотите изменить назначенного курьера?','Are you sure you want to change the assigned courier?')});if(!ok)return;try{await api.updateDeliveryJob(token,r.id,data);await x.reload()}catch(e){setError(e instanceof Error?e.message:'Error')}};
-  const workerStatus=async(r:Row)=>{const disabling=r.status==='ACTIVE';const ok=await confirm({danger:disabling,message:disabling?l('Ushbu kuryerni o‘chirishga ishonchingiz komilmi?','Вы уверены, что хотите отключить этого курьера?','Are you sure you want to disable this courier?'):l('Ushbu kuryerni faollashtirishga ishonchingiz komilmi?','Вы уверены, что хотите активировать этого курьера?','Are you sure you want to enable this courier?')});if(!ok)return;try{await api.setDeliveryWorkerStatus(token,r.id,disabling?'INACTIVE':'ACTIVE');await loadWorkers()}catch(e){setError(e instanceof Error?e.message:'Error')}};
+  const workerStatus=async(r:Row)=>{const disabling=r.status==='ACTIVE';const ok=await confirm({danger:disabling,message:disabling?l('Ushbu kuryerni nofaol qilishga ishonchingiz komilmi?','Вы уверены, что хотите сделать этого курьера неактивным?','Are you sure you want to make this courier inactive?'):l('Ushbu kuryerni faollashtirishga ishonchingiz komilmi?','Вы уверены, что хотите активировать этого курьера?','Are you sure you want to enable this courier?')});if(!ok)return;try{await api.setDeliveryWorkerStatus(token,r.id,disabling?'INACTIVE':'ACTIVE');await loadWorkers()}catch(e){setError(e instanceof Error?e.message:'Error')}};
+  const deleteWorker=async(r:Row)=>{const ok=await confirm({danger:true,message:l(`${r.full_name||r.worker_code} kuryerini butunlay o‘chirishga ishonchingiz komilmi? Bu amalni qaytarib bo‘lmaydi.`,`Вы уверены, что хотите навсегда удалить курьера ${r.full_name||r.worker_code}? Это действие нельзя отменить.`,`Are you sure you want to permanently delete courier ${r.full_name||r.worker_code}? This action cannot be undone.`)});if(!ok)return;try{await api.deleteDeliveryWorker(token,r.id);setWorkers(current=>current.filter(w=>Number(w.id)!==Number(r.id)));setError(null)}catch(e){const message=e instanceof Error?e.message:'Error';setError(message==='COURIER_IS_IN_USE'?l('Bu kuryer yetkazib berish tarixida ishlatilgan. Tarixni saqlash uchun uni butunlay o‘chirib bo‘lmaydi. Uni Nofaol holatda qoldiring.','Этот курьер уже используется в истории доставок. Для сохранения истории его нельзя удалить полностью. Оставьте его неактивным.','This courier is already used in delivery history and cannot be permanently deleted. Keep the courier inactive instead.'):message)}};
   const createWorker=async()=>{try{await api.createDeliveryWorker(token,workerForm);setNewWorker(false);setWorkerForm({workerId:'',fullName:'',phoneNumber:'',password:'',vehicleType:'',vehicleNumber:''});await loadWorkers()}catch(e){setError(e instanceof Error?e.message:'Error')}};
   return <>
     <PageTitle title={l('Yetkazib berish','Доставка','Delivery')} subtitle={l('Kuryerlar va yetkazma ishlarini boshqaring.','Управляйте курьерами и доставками.','Manage couriers and delivery jobs.')} actionLabel={tab===1?l('Kuryer qo‘shish','Добавить курьера','Add courier'):undefined} onAction={tab===1?()=>setNewWorker(true):undefined}/>
     {error&&<Alert severity="error" sx={{mb:2}} onClose={()=>setError(null)}>{error}</Alert>}
     <Tabs value={tab} onChange={(_,v)=>setTab(v)} sx={{mb:3}}><Tab label={l('Yetkazmalar','Доставки','Jobs')}/><Tab label={l('Kuryerlar','Курьеры','Couriers')}/></Tabs>
-    {tab===0?<><TextField select size="small" label={l('Holat','Статус','Status')} value={status} onChange={e=>setStatus(e.target.value)} sx={{minWidth:200,mb:2}}><MenuItem value="">{l('Barchasi','Все','All')}</MenuItem>{['WAITING_ASSIGNMENT','ACCEPTED','ON_THE_WAY','DELIVERED','FAILED','CANCELLED'].map(v=><MenuItem key={v} value={v}>{enumLabel(v)}</MenuItem>)}</TextField><LoadState loading={x.loading} error={x.error} onRetry={x.reload}><TablePanel><Table><TableHead><TableRow><TableCell>{l('Buyurtma','Заказ','Order')}</TableCell><TableCell>{l('Mijoz','Клиент','Customer')}</TableCell><TableCell>{l('Kuryer','Курьер','Courier')}</TableCell><TableCell>{l('Manzil','Адрес','Address')}</TableCell><TableCell>{l('Holat','Статус','Status')}</TableCell><TableCell>{l('Yangilangan','Обновлено','Updated')}</TableCell></TableRow></TableHead><TableBody>{x.data.items.map(r=><TableRow key={r.id}><TableCell>{r.order_number}</TableCell><TableCell>{r.customer_name}</TableCell><TableCell><Select size="small" displayEmpty value={r.delivery_worker_id||''} onChange={e=>void updateJob(r,{delivery_worker_id:Number(e.target.value),status:r.status==='WAITING_ASSIGNMENT'?'ACCEPTED':r.status})}><MenuItem value="">-</MenuItem>{workers.filter(w=>w.status==='ACTIVE').map(w=><MenuItem key={w.id} value={w.id}>{w.full_name}</MenuItem>)}</Select></TableCell><TableCell sx={{maxWidth:260}}>{r.delivery_address}</TableCell><TableCell><Select size="small" value={r.status} onChange={e=>void updateJob(r,{status:e.target.value})}>{['WAITING_ASSIGNMENT','ACCEPTED','ON_THE_WAY','DELIVERED','FAILED','CANCELLED'].map(v=><MenuItem key={v} value={v}>{enumLabel(v)}</MenuItem>)}</Select></TableCell><TableCell>{dateTime(r.updated_at)}</TableCell></TableRow>)}</TableBody></Table>{x.pagination}</TablePanel></LoadState></>:<TablePanel><Table><TableHead><TableRow><TableCell>ID</TableCell><TableCell>{l('Kuryer','Курьер','Courier')}</TableCell><TableCell>{l('Telefon','Телефон','Phone')}</TableCell><TableCell>{l('Transport','Транспорт','Vehicle')}</TableCell><TableCell>{l('Onlayn','Онлайн','Online')}</TableCell><TableCell>{l('Holat','Статус','Status')}</TableCell><TableCell/></TableRow></TableHead><TableBody>{workers.map(w=><TableRow key={w.id}><TableCell>{w.worker_code}</TableCell><TableCell>{w.full_name}</TableCell><TableCell>{w.phone_number}</TableCell><TableCell>{[w.vehicle_type,w.vehicle_number].filter(Boolean).join(' · ')}</TableCell><TableCell><StatusChip value={w.is_online?'ONLINE':'OFFLINE'}/></TableCell><TableCell><StatusChip value={w.status}/></TableCell><TableCell><Button size="small" color={w.status==='ACTIVE'?'error':'success'} onClick={()=>void workerStatus(w)}>{w.status==='ACTIVE'?l('O‘chirish','Отключить','Disable'):l('Faollashtirish','Включить','Enable')}</Button></TableCell></TableRow>)}</TableBody></Table></TablePanel>}
+    {tab===0?<><TextField select size="small" label={l('Holat','Статус','Status')} value={status} onChange={e=>setStatus(e.target.value)} sx={{minWidth:200,mb:2}}><MenuItem value="">{l('Barchasi','Все','All')}</MenuItem>{['WAITING_ASSIGNMENT','ACCEPTED','ON_THE_WAY','DELIVERED','FAILED','CANCELLED'].map(v=><MenuItem key={v} value={v}>{enumLabel(v)}</MenuItem>)}</TextField><LoadState loading={x.loading} error={x.error} onRetry={x.reload}><TablePanel><Table><TableHead><TableRow><TableCell>{l('Buyurtma','Заказ','Order')}</TableCell><TableCell>{l('Mijoz','Клиент','Customer')}</TableCell><TableCell>{l('Kuryer','Курьер','Courier')}</TableCell><TableCell>{l('Manzil','Адрес','Address')}</TableCell><TableCell>{l('Holat','Статус','Status')}</TableCell><TableCell>{l('Yangilangan','Обновлено','Updated')}</TableCell></TableRow></TableHead><TableBody>{x.data.items.map(r=><TableRow key={r.id}><TableCell>{r.order_number}</TableCell><TableCell>{r.customer_name}</TableCell><TableCell><Select size="small" displayEmpty value={r.delivery_worker_id||''} onChange={e=>void updateJob(r,{delivery_worker_id:Number(e.target.value),status:r.status==='WAITING_ASSIGNMENT'?'ACCEPTED':r.status})}><MenuItem value="">-</MenuItem>{workers.filter(w=>w.status==='ACTIVE').map(w=><MenuItem key={w.id} value={w.id}>{w.full_name}</MenuItem>)}</Select></TableCell><TableCell sx={{maxWidth:260}}>{r.delivery_address}</TableCell><TableCell><Select size="small" value={r.status} onChange={e=>void updateJob(r,{status:e.target.value})}>{['WAITING_ASSIGNMENT','ACCEPTED','ON_THE_WAY','DELIVERED','FAILED','CANCELLED'].map(v=><MenuItem key={v} value={v}>{enumLabel(v)}</MenuItem>)}</Select></TableCell><TableCell>{dateTime(r.updated_at)}</TableCell></TableRow>)}</TableBody></Table>{x.pagination}</TablePanel></LoadState></>:<TablePanel><Table><TableHead><TableRow><TableCell>ID</TableCell><TableCell>{l('Kuryer','Курьер','Courier')}</TableCell><TableCell>{l('Telefon','Телефон','Phone')}</TableCell><TableCell>{l('Transport','Транспорт','Vehicle')}</TableCell><TableCell>{l('Onlayn','Онлайн','Online')}</TableCell><TableCell>{l('Holat','Статус','Status')}</TableCell><TableCell/></TableRow></TableHead><TableBody>{workers.map(w=><TableRow key={w.id}><TableCell>{w.worker_code}</TableCell><TableCell>{w.full_name}</TableCell><TableCell>{w.phone_number}</TableCell><TableCell>{[w.vehicle_type,w.vehicle_number].filter(Boolean).join(' · ')}</TableCell><TableCell><StatusChip value={w.is_online?'ONLINE':'OFFLINE'}/></TableCell><TableCell><StatusChip value={w.status}/></TableCell><TableCell><Stack direction="row" spacing={1} alignItems="center"><Button size="small" color={w.status==='ACTIVE'?'warning':'success'} onClick={()=>void workerStatus(w)}>{w.status==='ACTIVE'?l('Nofaol qilish','Отключить','Disable'):l('Faollashtirish','Включить','Enable')}</Button><Tooltip title={l('Kuryerni o‘chirish','Удалить курьера','Delete courier')}><IconButton color="error" size="small" onClick={()=>void deleteWorker(w)}><DeleteRounded/></IconButton></Tooltip></Stack></TableCell></TableRow>)}</TableBody></Table></TablePanel>}
     {confirmDialog}
     <Dialog open={newWorker} onClose={()=>setNewWorker(false)} fullWidth maxWidth="xs"><DialogTitle>{l('Yangi kuryer','Новый курьер','New courier')}</DialogTitle><DialogContent sx={{pt:'20px!important'}}><Stack spacing={3}><TextField label={l('Kuryer ID','ID курьера','Courier ID')} value={workerForm.workerId} onChange={e=>setWorkerForm(v=>({...v,workerId:e.target.value}))}/><TextField label={l('To‘liq ism','Полное имя','Full name')} value={workerForm.fullName} onChange={e=>setWorkerForm(v=>({...v,fullName:e.target.value}))}/><TextField label={l('Telefon','Телефон','Phone')} value={workerForm.phoneNumber} onChange={e=>setWorkerForm(v=>({...v,phoneNumber:e.target.value}))}/><TextField type="password" label={l('Parol','Пароль','Password')} value={workerForm.password} onChange={e=>setWorkerForm(v=>({...v,password:e.target.value}))}/><TextField label={l('Transport turi','Тип транспорта','Vehicle type')} value={workerForm.vehicleType} onChange={e=>setWorkerForm(v=>({...v,vehicleType:e.target.value}))}/><TextField label={l('Transport raqami','Номер транспорта','Vehicle number')} value={workerForm.vehicleNumber} onChange={e=>setWorkerForm(v=>({...v,vehicleNumber:e.target.value}))}/></Stack></DialogContent><DialogActions><Button onClick={()=>setNewWorker(false)}>{l('Bekor qilish','Отмена','Cancel')}</Button><Button variant="contained" disabled={!workerForm.workerId||!workerForm.fullName||!workerForm.password} onClick={()=>void createWorker()}>{l('Yaratish','Создать','Create')}</Button></DialogActions></Dialog>
   </>;

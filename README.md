@@ -38,3 +38,18 @@ npm run build
 - Product questions: list/filter, answer/edit answer, show/hide
 - Marketing: promotions, home banners, coupons
 - Settings: app config + admin account creation/enable/disable
+
+
+## Global backend loading
+Admin write actions (create/update/delete/status/save) automatically show a centered blocking loading overlay until the backend request finishes. Read-only page/list loading keeps its existing local loader, and Fiscal MXIK search POST requests explicitly skip the global overlay.
+
+
+## Inline product status loading
+The Products Faol/Nofaol switch is explicitly excluded from the global blocking loader. It keeps its existing per-row spinner while the status request is in progress.
+
+
+## Production deployment under /admin/
+
+- Vite base: `/admin/`
+- React BrowserRouter basename follows `import.meta.env.BASE_URL`, so routes stay under `/admin/*`.
+- `.env.production` uses the same origin (`http://95.182.118.233`) for API calls. Nginx proxies `/ninimum/api/v1/*` and `/uploads/*` to the Spring Boot backend through the existing port-80 server block, avoiding cross-origin/CORS issues with port 8083.

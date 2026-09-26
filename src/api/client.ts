@@ -14,42 +14,77 @@ export class ApiError extends Error {
   }
 }
 
+export const API_ACTIVITY_EVENT = 'ninimum-api-activity';
+
+let activeTrackedRequests = 0;
+
+function emitApiActivity() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(API_ACTIVITY_EVENT, { detail: activeTrackedRequests }));
+}
+
+function beginApiActivity() {
+  activeTrackedRequests += 1;
+  emitApiActivity();
+}
+
+function endApiActivity() {
+  activeTrackedRequests = Math.max(0, activeTrackedRequests - 1);
+  emitApiActivity();
+}
+
 interface RequestOptions extends RequestInit {
   token?: string;
+  /**
+   * Controls the global blocking loader. By default, write requests are tracked
+   * and read requests are not. Set false for POST endpoints that only search/read.
+   */
+  showLoading?: boolean;
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
-  const headers = new Headers(options.headers);
-  headers.set('Accept', 'application/json');
+  const { token, showLoading, ...requestOptions } = options;
+  const method = String(requestOptions.method ?? 'GET').toUpperCase();
+  const trackLoading = showLoading ?? !['GET', 'HEAD', 'OPTIONS'].includes(method);
 
-  // Only string request bodies in this app are JSON.
-  // FormData/Blob/ArrayBuffer bodies must keep their own content type so the
-  // browser/server can process image uploads correctly.
-  if (typeof options.body === 'string' && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
+  if (trackLoading) beginApiActivity();
 
-  if (options.token) {
-    headers.set('Authorization', `Bearer ${options.token}`);
-  }
-
-  let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
-  } catch {
-    throw new ApiError('NETWORK_ERROR');
-  }
+    const headers = new Headers(requestOptions.headers);
+    headers.set('Accept', 'application/json');
 
-  let payload: ApiResponse<T> | null = null;
-  try {
-    payload = (await response.json()) as ApiResponse<T>;
-  } catch {
-    throw new ApiError('INVALID_RESPONSE', undefined, response.status);
-  }
+    // Only string request bodies in this app are JSON.
+    // FormData/Blob/ArrayBuffer bodies must keep their own content type so the
+    // browser/server can process image uploads correctly.
+    if (typeof requestOptions.body === 'string' && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
 
-  if (!response.ok || payload.resultCode !== '100') {
-    throw new ApiError(payload.resultMsg || 'REQUEST_FAILED', payload.resultCode, response.status);
-  }
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
 
-  return payload;
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, { ...requestOptions, headers });
+    } catch {
+      throw new ApiError('NETWORK_ERROR');
+    }
+
+    let payload: ApiResponse<T> | null = null;
+    try {
+      payload = (await response.json()) as ApiResponse<T>;
+    } catch {
+      throw new ApiError('INVALID_RESPONSE', undefined, response.status);
+    }
+
+    if (!response.ok || payload.resultCode !== '100') {
+      throw new ApiError(payload.resultMsg || 'REQUEST_FAILED', payload.resultCode, response.status);
+    }
+
+    return payload;
+  } finally {
+    if (trackLoading) endApiActivity();
+  }
 }
+

@@ -16,6 +16,7 @@ export const updateOrderStatus = (token:string,id:number,data:Row) => apiRequest
 export const listProducts = (token:string, params:Row={}) => apiRequest<PageData>(`${m}/products${q(params)}`,{token}).then(r=>r.resultData);
 export const getProduct = (token:string,id:number) => apiRequest<Row>(`${m}/products/${id}`,{token}).then(r=>r.resultData);
 export const updateProduct = (token:string,id:number,data:Row) => apiRequest<null>(`${m}/products/${id}`,{token,method:'PUT',body:JSON.stringify(data)});
+export const updateProductInline = (token:string,id:number,data:Row) => apiRequest<null>(`${m}/products/${id}`,{token,method:'PUT',showLoading:false,body:JSON.stringify(data)});
 export const deleteProduct = (token:string,id:number) => apiRequest<null>(`${m}/products/${id}`,{token,method:'DELETE'});
 const IMAGE_SAFE_UPLOAD_BYTES = 450 * 1024;
 const IMAGE_RETRY_UPLOAD_BYTES = 280 * 1024;
@@ -162,8 +163,8 @@ export const createProduct = async (token:string,data:Row,images:File[]) => {
   return response;
 };
 
-export const listFiscalMxik = (token:string, keyword='', pageSize=20, offset=0) => apiRequest<Row[]>('/ninimum/api/v1/admin/product/getFiscalMxikList',{token,method:'POST',body:JSON.stringify({keyword,pageSize,offset})}).then(r=>r.resultData);
-export const listFiscalPackages = (token:string, keyword='', mxikId?:number) => apiRequest<Row[]>('/ninimum/api/v1/admin/product/getFiscalMxikPackageList',{token,method:'POST',body:JSON.stringify({keyword,mxikId,pageSize:100,offset:0})}).then(r=>r.resultData);
+export const listFiscalMxik = (token:string, keyword='', pageSize=20, offset=0) => apiRequest<Row[]>('/ninimum/api/v1/admin/product/getFiscalMxikList',{token,method:'POST',showLoading:false,body:JSON.stringify({keyword,pageSize,offset})}).then(r=>r.resultData);
+export const listFiscalPackages = (token:string, keyword='', mxikId?:number) => apiRequest<Row[]>('/ninimum/api/v1/admin/product/getFiscalMxikPackageList',{token,method:'POST',showLoading:false,body:JSON.stringify({keyword,mxikId,pageSize:100,offset:0})}).then(r=>r.resultData);
 
 export const listCategories = (token:string) => apiRequest<Row[]>(`${m}/categories`,{token}).then(r=>r.resultData);
 export const createCategory = (token:string,data:Row) => apiRequest<null>(`${m}/categories`,{token,method:'POST',body:JSON.stringify(data)});
@@ -182,6 +183,7 @@ export const listDeliveryJobs = (token:string,params:Row={}) => apiRequest<PageD
 export const listDeliveryWorkers = (token:string) => apiRequest<Row[]>(`${m}/delivery/workers`,{token}).then(r=>r.resultData);
 export const createDeliveryWorker = (token:string,data:Row) => apiRequest<Row>('/ninimum/api/v1/delivery-app/admin/createWorker',{token,method:'POST',body:JSON.stringify(data)}).then(r=>r.resultData);
 export const setDeliveryWorkerStatus = (token:string,id:number,status:string) => apiRequest<null>(`${m}/delivery/workers/${id}/status`,{token,method:'PUT',body:JSON.stringify({status})});
+export const deleteDeliveryWorker = (token:string,id:number) => apiRequest<null>(`${m}/delivery/workers/${id}`,{token,method:'DELETE'});
 export const updateDeliveryJob = (token:string,id:number,data:Row) => apiRequest<null>(`${m}/delivery/jobs/${id}`,{token,method:'PUT',body:JSON.stringify(data)});
 
 export const listReviews = (token:string,params:Row={}) => apiRequest<PageData>(`${m}/reviews${q(params)}`,{token}).then(r=>r.resultData);

@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import {
   CategoryRounded,
   DashboardRounded,
@@ -16,7 +16,9 @@ import {
 } from '@mui/icons-material';
 import {
   Avatar,
+  Backdrop,
   Box,
+  CircularProgress,
   Divider,
   Drawer,
   IconButton,
@@ -33,6 +35,7 @@ import {
 } from '@mui/material';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
+import { API_ACTIVITY_EVENT } from '../api/client';
 import LanguageSelector from '../components/LanguageSelector';
 import { useLanguage } from '../i18n/LanguageProvider';
 import type { TranslationKey } from '../i18n/translations';
@@ -66,6 +69,36 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const { admin, logout } = useAuth();
   const { t } = useLanguage();
+  const [backendBusy, setBackendBusy] = useState(false);
+  const backendBusyHideTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    const handleActivity = (event: Event) => {
+      const count = Number((event as CustomEvent<number>).detail || 0);
+      if (backendBusyHideTimer.current !== null) {
+        window.clearTimeout(backendBusyHideTimer.current);
+        backendBusyHideTimer.current = null;
+      }
+
+      if (count > 0) {
+        setBackendBusy(true);
+        return;
+      }
+
+      // A very small delay prevents flicker when one save action performs
+      // several backend calls in sequence (for example product + images).
+      backendBusyHideTimer.current = window.setTimeout(() => {
+        setBackendBusy(false);
+        backendBusyHideTimer.current = null;
+      }, 180);
+    };
+
+    window.addEventListener(API_ACTIVITY_EVENT, handleActivity);
+    return () => {
+      window.removeEventListener(API_ACTIVITY_EVENT, handleActivity);
+      if (backendBusyHideTimer.current !== null) window.clearTimeout(backendBusyHideTimer.current);
+    };
+  }, []);
 
   const initials = useMemo(() => {
     const source = admin?.name?.trim() || admin?.login_id || 'AD';
@@ -202,6 +235,21 @@ export default function AdminLayout() {
 
         <Box component="main" sx={{ p: { xs: 2, md: 3.5 }, maxWidth: 1600, mx: 'auto' }}><Outlet /></Box>
       </Box>
+
+      <Backdrop
+        open={backendBusy}
+        sx={{
+          zIndex: (currentTheme) => currentTheme.zIndex.modal + 1000,
+          bgcolor: 'rgba(255,255,255,0.78)',
+          color: 'text.primary',
+          backdropFilter: 'blur(1px)',
+        }}
+      >
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <CircularProgress size={52} />
+          <Typography sx={{ mt: 2, fontWeight: 800 }}>{t('common.loading')}</Typography>
+        </Box>
+      </Backdrop>
     </Box>
   );
 }
