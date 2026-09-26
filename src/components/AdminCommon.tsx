@@ -57,7 +57,7 @@ export function PageTitle({ title, subtitle: _subtitle, actionLabel, onAction }:
       alignItems: { xs: 'stretch', sm: 'center' },
       justifyContent: 'flex-start',
       flexWrap: 'wrap',
-      paddingBottom: { xs: '24px', sm: '30px' },
+      paddingBottom: { xs: '20px', sm: '30px' },
     }}
   >
     <Typography
@@ -65,21 +65,35 @@ export function PageTitle({ title, subtitle: _subtitle, actionLabel, onAction }:
       fontWeight={850}
       sx={{
         lineHeight: 1.1,
+        fontSize: { xs: 28, sm: 32, md: 34 },
         marginRight: { xs: 0, sm: '32px' },
         marginBottom: { xs: '16px', sm: 0 },
       }}
     >
       {title}
     </Typography>
-    {actionLabel && onAction && <Button variant="contained" startIcon={<AddRounded />} onClick={onAction} sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}>{actionLabel}</Button>}
+    {actionLabel && onAction && <Button variant="contained" startIcon={<AddRounded />} onClick={onAction} sx={{ alignSelf: { xs: 'stretch', sm: 'center' }, minHeight: { xs: 46, sm: 40 } }}>{actionLabel}</Button>}
   </Box>;
 }
 
 export function Panel({ children, sx }: { children: ReactNode; sx?: object }) {
-  return <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden', ...sx }}>{children}</Paper>;
+  return <Paper variant="outlined" sx={{ borderRadius: { xs: 2.5, sm: 3 }, overflow: 'hidden', ...sx }}>{children}</Paper>;
 }
 
-export function TablePanel({ children, sx }: { children: ReactNode; sx?: object }) { return <Panel sx={{ mt: 2.5, ...sx }}><TableContainer>{children}</TableContainer></Panel>; }
+export function TablePanel({ children, sx }: { children: ReactNode; sx?: object }) {
+  return <Panel sx={{ mt: { xs: 2, sm: 2.5 }, ...sx }}>
+    <TableContainer
+      className="admin-table-scroll"
+      sx={{
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        '& table': { minWidth: { xs: 720, md: '100%' } },
+      }}
+    >
+      {children}
+    </TableContainer>
+  </Panel>;
+}
 
 export function LoadState({ loading, error, onRetry, children }: { loading: boolean; error: string | null; onRetry: () => void; children: ReactNode }) {
   const l = useL();

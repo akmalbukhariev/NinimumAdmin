@@ -148,7 +148,7 @@ export default function AdminLayout() {
   );
 
   const drawer = (
-    <Box sx={{ height: '100%', background: '#22292F', color: '#fff', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: '100%', background: '#22292F', color: '#fff', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
       <Box sx={{ px: 3, pt: 3, pb: 2.7, display: 'flex', alignItems: 'center', gap: 1.35 }}>
         <Box sx={{ width: 38, height: 38, borderRadius: '11px', display: 'grid', placeItems: 'center', background: '#FD473C', fontWeight: 900, fontSize: 20 }}>N</Box>
         <Box>
@@ -156,6 +156,8 @@ export default function AdminLayout() {
           <Typography sx={{ mt: 0.35, fontSize: 11.5, color: '#858D94', fontWeight: 650 }}>ADMIN PANEL</Typography>
         </Box>
       </Box>
+
+      {!isDesktop && <Box sx={{ px: 2.5, pb: 2.2 }}><LanguageSelector dark /></Box>}
 
       <Typography sx={{ px: 3, mb: 1, color: '#697178', fontSize: 10.5, fontWeight: 800, letterSpacing: 1.25 }}>{t('nav.management')}</Typography>
       {navList(primaryItems)}
@@ -187,7 +189,7 @@ export default function AdminLayout() {
         sx={{
           width: isDesktop ? drawerWidth : undefined,
           flexShrink: 0,
-          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', border: 0 },
+          '& .MuiDrawer-paper': { width: { xs: '86vw', sm: drawerWidth }, maxWidth: 292, boxSizing: 'border-box', border: 0 },
         }}
       >
         {drawer}
@@ -197,11 +199,11 @@ export default function AdminLayout() {
         <Box
           component="header"
           sx={{
-            height: 78,
-            px: { xs: 2, md: 3.5 },
+            height: { xs: 64, sm: 70, md: 78 },
+            px: { xs: 1.25, sm: 2, md: 3.5 },
             display: 'flex',
             alignItems: 'center',
-            gap: 2,
+            gap: { xs: 1, sm: 1.5, md: 2 },
             bgcolor: '#FFFFFF',
             borderBottom: '1px solid',
             borderColor: 'divider',
@@ -210,20 +212,24 @@ export default function AdminLayout() {
             zIndex: 20,
           }}
         >
-          {!isDesktop && <IconButton onClick={() => setMobileOpen(true)}><MenuRounded /></IconButton>}
+          {!isDesktop && <IconButton aria-label="Open menu" onClick={() => setMobileOpen(true)} sx={{ width: 42, height: 42 }}><MenuRounded /></IconButton>}
+          {!isDesktop && <Box sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 30, height: 30, borderRadius: '9px', display: 'grid', placeItems: 'center', bgcolor: '#FD473C', color: '#fff', fontWeight: 900 }}>N</Box>
+            <Typography sx={{ fontSize: 16, fontWeight: 850 }}>Ninimum</Typography>
+          </Box>}
 
           <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: { xs: 'none', md: 'block' } }}><LanguageSelector /></Box>
 
           <Tooltip title={t('header.notifications')}>
-            <IconButton sx={{ bgcolor: '#F7F8FB', border: '1px solid #ECEDEF' }}><NotificationsNoneRounded /></IconButton>
+            <IconButton sx={{ width: { xs: 40, sm: 42 }, height: { xs: 40, sm: 42 }, bgcolor: '#F7F8FB', border: '1px solid #ECEDEF' }}><NotificationsNoneRounded /></IconButton>
           </Tooltip>
 
           <Box sx={{ display: { xs: 'none', sm: 'block' }, cursor: 'pointer' }} onClick={handleProfileClick}>
             <Typography sx={{ fontSize: 13.5, fontWeight: 750 }}>{admin?.name || t('header.adminRole')}</Typography>
             <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>{admin?.role || 'ADMIN'}</Typography>
           </Box>
-          <Avatar onClick={handleProfileClick} sx={{ width: 38, height: 38, bgcolor: '#22292F', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{initials}</Avatar>
+          <Avatar onClick={handleProfileClick} sx={{ width: { xs: 36, sm: 38 }, height: { xs: 36, sm: 38 }, bgcolor: '#22292F', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{initials}</Avatar>
 
           <Menu anchorEl={profileAnchor} open={Boolean(profileAnchor)} onClose={() => setProfileAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
             <MenuItem onClick={handleLogout}>
@@ -233,7 +239,7 @@ export default function AdminLayout() {
           </Menu>
         </Box>
 
-        <Box component="main" sx={{ p: { xs: 2, md: 3.5 }, maxWidth: 1600, mx: 'auto' }}><Outlet /></Box>
+        <Box component="main" sx={{ p: { xs: 1.5, sm: 2.25, md: 3.5 }, pb: { xs: 5, md: 3.5 }, maxWidth: 1600, mx: 'auto', width: '100%', minWidth: 0 }}><Outlet /></Box>
       </Box>
 
       <Backdrop

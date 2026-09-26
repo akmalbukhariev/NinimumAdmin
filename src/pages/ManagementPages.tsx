@@ -985,7 +985,7 @@ export function PromotionsPage(){
               <Typography fontWeight={800} fontSize={18}>{l('Banner hozircha bo‘sh','Баннер пока пуст','The banner is empty')}</Typography>
               <Typography color="text.secondary" mt={1}>{l('Yuqoridagi “Mahsulotlar qo‘shish” tugmasi orqali bir yoki bir nechta mahsulot tanlang.','Используйте кнопку «Добавить товары» выше, чтобы выбрать один или несколько товаров.','Use the “Add products” button above to select one or more products.')}</Typography>
             </Box>
-            :<Box sx={{overflowX:'auto'}}><Table>
+            :<Box className="admin-table-scroll" sx={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}><Table sx={{minWidth:{xs:720,md:'100%'}}}>
               <TableHead><TableRow><TableCell width={70}>#</TableCell><TableCell>{l('Mahsulot','Товар','Product')}</TableCell><TableCell>{l('Narx','Цена','Price')}</TableCell><TableCell width={110}>{l('Tartib','Порядок','Order')}</TableCell><TableCell align="right" width={230}>{l('Amallar','Действия','Actions')}</TableCell></TableRow></TableHead>
               <TableBody>{banners.map((banner,index)=><TableRow key={banner.id??`${banner.product_id}-${index}`} hover onClick={()=>openEdit(index)} sx={{cursor:'pointer'}}>
                 <TableCell>{index+1}</TableCell>

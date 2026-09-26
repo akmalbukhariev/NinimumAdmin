@@ -104,16 +104,23 @@ export default function LoginPage() {
         <Box sx={{ position: 'absolute', width: 360, height: 360, borderRadius: '50%', bgcolor: 'rgba(253,71,60,0.06)', right: -40, bottom: -190 }} />
       </Box>
 
-      <Box sx={{ display: 'grid', placeItems: 'center', p: { xs: 2.5, sm: 5 }, position: 'relative' }}>
-        <Box sx={{ display: { xs: 'block', lg: 'none' }, position: 'absolute', top: 20, right: 20 }}>
+      <Box sx={{ display: 'grid', placeItems: 'center', p: { xs: '92px 16px 24px', sm: 5 }, position: 'relative' }}>
+        <Box sx={{ display: { xs: 'flex', lg: 'none' }, position: 'absolute', top: 18, left: 16, right: 16, alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.1 }}>
+            <Box sx={{ width: 38, height: 38, borderRadius: '11px', bgcolor: '#FD473C', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 19 }}>N</Box>
+            <Box>
+              <Typography sx={{ fontSize: 17, fontWeight: 850, lineHeight: 1 }}>Ninimum</Typography>
+              <Typography sx={{ mt: 0.35, color: 'text.secondary', fontSize: 10.5, fontWeight: 700 }}>ADMIN PANEL</Typography>
+            </Box>
+          </Box>
           <LanguageSelector />
         </Box>
 
-        <Paper elevation={0} sx={{ width: '100%', maxWidth: 455, p: { xs: 3, sm: 4.5 }, border: '1px solid', borderColor: 'divider' }}>
+        <Paper elevation={0} sx={{ width: '100%', maxWidth: 455, p: { xs: 2.5, sm: 4.5 }, border: '1px solid', borderColor: 'divider', borderRadius: { xs: 3, sm: 3.5 } }}>
           <Box sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: '#FFF0EF', color: '#FD473C', display: 'grid', placeItems: 'center', mb: 2.5 }}>
             <LockOutlined />
           </Box>
-          <Typography variant="h4" sx={{ fontSize: 29 }}>{t('login.title')}</Typography>
+          <Typography variant="h4" sx={{ fontSize: { xs: 26, sm: 29 } }}>{t('login.title')}</Typography>
           <Typography color="text.secondary" sx={{ mt: 0.8, fontSize: 13.5 }}>
             {t('login.subtitle')}
           </Typography>

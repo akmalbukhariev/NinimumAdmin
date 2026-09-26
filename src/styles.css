@@ -43,3 +43,76 @@ select {
 ::-webkit-scrollbar-thumb:hover {
   background: #bfc2c8;
 }
+
+/* Responsive admin behavior */
+.admin-table-scroll {
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+}
+
+@media (max-width: 599.95px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .admin-table-scroll {
+    margin-left: -1px;
+    margin-right: -1px;
+    padding-bottom: 2px;
+  }
+
+  .MuiTablePagination-root {
+    overflow: visible;
+  }
+
+  .MuiTablePagination-toolbar {
+    min-height: 58px !important;
+    padding-left: 10px !important;
+    padding-right: 8px !important;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    row-gap: 2px;
+  }
+
+  .MuiTablePagination-spacer {
+    display: none;
+  }
+
+  .MuiTablePagination-selectLabel,
+  .MuiTablePagination-displayedRows {
+    margin-top: 0;
+    margin-bottom: 0;
+    font-size: 12px;
+  }
+
+  .MuiTabs-root {
+    max-width: 100%;
+  }
+
+  .MuiTabs-scroller {
+    overflow-x: auto !important;
+    scrollbar-width: none;
+  }
+
+  .MuiTabs-scroller::-webkit-scrollbar {
+    display: none;
+  }
+
+  .MuiAlert-root {
+    align-items: flex-start;
+  }
+
+  .MuiAlert-message {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .MuiAutocomplete-popper {
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  .MuiDialog-paper .MuiTextField-root,
+  .MuiDialog-paper .MuiFormControl-root {
+    max-width: 100%;
+  }
+}

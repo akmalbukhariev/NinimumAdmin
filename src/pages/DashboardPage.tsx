@@ -151,20 +151,21 @@ export default function DashboardPage() {
           alignItems: { xs: 'stretch', sm: 'center' },
           justifyContent: 'flex-start',
           flexWrap: 'wrap',
-          paddingBottom: { xs: '24px', sm: '30px' },
+          paddingBottom: { xs: '20px', sm: '30px' },
         }}
       >
         <Typography
           variant="h4"
           sx={{
             lineHeight: 1.1,
+            fontSize: { xs: 28, sm: 32, md: 34 },
             marginRight: { xs: 0, sm: '32px' },
             marginBottom: { xs: '16px', sm: 0 },
           }}
         >
           {t('dashboard.title')}
         </Typography>
-        <Button variant="contained" startIcon={<AddRounded />} onClick={() => navigate('/products')} sx={{ px: 2.2, py: 1.05 }}>
+        <Button variant="contained" startIcon={<AddRounded />} onClick={() => navigate('/products')} sx={{ px: 2.2, py: 1.05, minHeight: { xs: 46, sm: 40 } }}>
           {t('dashboard.addProduct')}
         </Button>
       </Box>
@@ -185,7 +186,7 @@ export default function DashboardPage() {
           </Box>
 
           <Box sx={{ mt: 2, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', xl: '1.65fr 1fr' } }}>
-            <Paper elevation={0} sx={{ p: 2.6, border: '1px solid', borderColor: 'divider' }}>
+            <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.6 }, border: '1px solid', borderColor: 'divider' }}>
               <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2}>
                 <Box>
                   <Typography variant="h6">{t('dashboard.salesOverview')}</Typography>
@@ -194,12 +195,12 @@ export default function DashboardPage() {
                 <Button size="small" variant="outlined" sx={{ color: 'text.primary', borderColor: 'divider' }}>{t('dashboard.last7Days')}</Button>
               </Box>
 
-              <Box sx={{ mt: 3.2, height: 250, display: 'flex', alignItems: 'flex-end', gap: { xs: 1.2, sm: 2.2 } }}>
+              <Box sx={{ mt: { xs: 2.4, sm: 3.2 }, height: { xs: 210, sm: 250 }, display: 'flex', alignItems: 'flex-end', gap: { xs: 0.7, sm: 2.2 } }}>
                 {sales.map((item, index) => {
                   const height = item.total <= 0 ? 3 : Math.max((item.total / maxSales) * 100, 8);
                   return (
                     <Box key={item.key} sx={{ flex: 1, minWidth: 0, textAlign: 'center' }} title={formatMoney(item.total)}>
-                      <Box sx={{ height: 205, display: 'flex', alignItems: 'flex-end' }}>
+                      <Box sx={{ height: { xs: 170, sm: 205 }, display: 'flex', alignItems: 'flex-end' }}>
                         <Box
                           sx={{
                             height: `${height}%`,
@@ -220,7 +221,7 @@ export default function DashboardPage() {
               </Box>
             </Paper>
 
-            <Paper elevation={0} sx={{ p: 2.6, border: '1px solid', borderColor: 'divider' }}>
+            <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.6 }, border: '1px solid', borderColor: 'divider' }}>
               <Box display="flex" justifyContent="space-between" alignItems="center">
                 <Box>
                   <Typography variant="h6">{t('dashboard.orderStatus')}</Typography>
@@ -259,7 +260,7 @@ export default function DashboardPage() {
 
           <Box sx={{ mt: 2, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', xl: '1.7fr 0.95fr' } }}>
             <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
-              <Box sx={{ p: 2.6, pb: 1.8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ p: { xs: 2, sm: 2.6 }, pb: { xs: 1.4, sm: 1.8 }, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: { xs: 1.2, sm: 2 } }}>
                 <Box>
                   <Typography variant="h6">{t('dashboard.recentOrders')}</Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>{t('dashboard.recentOrdersSubtitle')}</Typography>
@@ -303,7 +304,7 @@ export default function DashboardPage() {
               )}
             </Paper>
 
-            <Paper elevation={0} sx={{ p: 2.6, border: '1px solid', borderColor: 'divider' }}>
+            <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.6 }, border: '1px solid', borderColor: 'divider' }}>
               <Box display="flex" justifyContent="space-between" alignItems="center">
                 <Box>
                   <Typography variant="h6">{t('dashboard.lowStock')}</Typography>

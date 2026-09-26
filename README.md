@@ -53,3 +53,17 @@ The Products Faol/Nofaol switch is explicitly excluded from the global blocking 
 - Vite base: `/admin/`
 - React BrowserRouter basename follows `import.meta.env.BASE_URL`, so routes stay under `/admin/*`.
 - `.env.production` uses the same origin (`http://95.182.118.233`) for API calls. Nginx proxies `/ninimum/api/v1/*` and `/uploads/*` to the Spring Boot backend through the existing port-80 server block, avoiding cross-origin/CORS issues with port 8083.
+
+## Responsive/mobile admin
+
+This build keeps the desktop layout and adds responsive behavior for phones/tablets:
+- temporary slide-out navigation drawer on smaller screens
+- compact sticky mobile header and accessible language selector
+- one-column forms/dialog layouts on phones
+- mobile-sized dialog spacing and actions
+- touch-friendly controls and pagination
+- wide management tables scroll horizontally on small screens instead of breaking the page
+- dashboard cards/charts shrink and stack for phone widths
+- login page has a dedicated mobile header/layout
+
+Production deployment base remains `/admin/` and `.env.production` points to `http://95.182.118.233`.
