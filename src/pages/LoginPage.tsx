@@ -12,6 +12,7 @@ import {
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client';
+import { homePath } from '../auth/permissions';
 import { useAuth } from '../auth/AuthProvider';
 import LanguageSelector from '../components/LanguageSelector';
 import { useLanguage } from '../i18n/LanguageProvider';
@@ -19,8 +20,11 @@ import { useLanguage } from '../i18n/LanguageProvider';
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, isLoading, login } = useAuth();
-  const { t } = useLanguage();
+  const { isAuthenticated, isLoading, login, admin, sessionMessage } = useAuth();
+  const { t, language } = useLanguage();
+  const sessionText = sessionMessage === 'ADMIN_INACTIVE'
+    ? (language === 'uz' ? 'Administrator hisobingiz faol emas.' : language === 'ru' ? 'Ваша учётная запись администратора отключена.' : 'Your administrator account is inactive.')
+    : (language === 'uz' ? 'Bu hisobga boshqa qurilmadan kirildi. Iltimos, qayta kiring.' : language === 'ru' ? 'В этот аккаунт вошли на другом устройстве. Пожалуйста, войдите снова.' : 'This account was signed in on another device. Please sign in again.');
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -28,7 +32,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   if (!isLoading && isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={homePath(admin?.role)} replace />;
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -125,7 +129,8 @@ export default function LoginPage() {
             {t('login.subtitle')}
           </Typography>
 
-          {error && <Alert severity="error" sx={{ mt: 2.4 }}>{error}</Alert>}
+          {sessionMessage && <Alert severity="warning" sx={{ mb: 2 }}>{sessionText}</Alert>}
+            {error && <Alert severity="error" sx={{ mt: 2.4 }}>{error}</Alert>}
 
           <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3.3 }}>
             <Typography sx={{ mb: 0.7, fontSize: 12.5, fontWeight: 750 }}>{t('login.loginId')}</Typography>

@@ -31,7 +31,7 @@ const enumLabels: Record<string, [string, string, string]> = {
   OFFLINE: ['Oflayn', 'Офлайн', 'Offline'],
   AMOUNT: ['Summa', 'Сумма', 'Amount'],
   RATE: ['Foiz', 'Процент', 'Percentage'],
-  ADMIN: ['Administrator', 'Администратор', 'Administrator'],
+  ADMIN: ['Cheklangan administrator', 'Администратор с ограничениями', 'Restricted administrator'],
   SUPER_ADMIN: ['Bosh administrator', 'Главный администратор', 'Super administrator'],
   Y: ['Faol', 'Активен', 'Active'],
   N: ['Faol emas', 'Неактивен', 'Inactive'],

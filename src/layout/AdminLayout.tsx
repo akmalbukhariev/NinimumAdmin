@@ -34,6 +34,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { canAccess } from '../auth/permissions';
 import { useAuth } from '../auth/AuthProvider';
 import { API_ACTIVITY_EVENT } from '../api/client';
 import LanguageSelector from '../components/LanguageSelector';
@@ -119,7 +120,7 @@ export default function AdminLayout() {
 
   const navList = (items: NavItem[]) => (
     <List disablePadding sx={{ px: 1.5 }}>
-      {items.map((item) => {
+      {items.filter(item => canAccess(admin?.role, item.path)).map((item) => {
         const active = location.pathname === item.path;
         return (
           <ListItemButton

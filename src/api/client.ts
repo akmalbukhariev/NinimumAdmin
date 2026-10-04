@@ -14,6 +14,8 @@ export class ApiError extends Error {
   }
 }
 
+export const ADMIN_SESSION_EVENT = 'ninimum-admin-session-invalid';
+
 export const API_ACTIVITY_EVENT = 'ninimum-api-activity';
 
 let activeTrackedRequests = 0;
@@ -78,6 +80,11 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       throw new ApiError('INVALID_RESPONSE', undefined, response.status);
     }
 
+    if (token && ['ADMIN_SESSION_REPLACED', 'ADMIN_INACTIVE'].includes(payload.resultCode)) {
+      window.dispatchEvent(new CustomEvent(ADMIN_SESSION_EVENT, {
+        detail: { token, code: payload.resultCode },
+      }));
+    }
     if (!response.ok || payload.resultCode !== '100') {
       throw new ApiError(payload.resultMsg || 'REQUEST_FAILED', payload.resultCode, response.status);
     }
