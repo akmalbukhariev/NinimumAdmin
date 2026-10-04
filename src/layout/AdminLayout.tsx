@@ -52,6 +52,7 @@ const primaryItems: NavItem[] = [
   { labelKey: 'nav.categories', path: '/categories', icon: <CategoryRounded /> },
   { labelKey: 'nav.customers', path: '/customers', icon: <PeopleAltRounded /> },
   { labelKey: 'nav.subscriptions', path: '/subscriptions', icon: <WorkspacePremiumRounded /> },
+  { labelKey: 'nav.warehouse', path: '/warehouse', icon: <Inventory2Rounded /> },
   { labelKey: 'nav.delivery', path: '/delivery', icon: <DeliveryDiningRounded /> },
 ];
 

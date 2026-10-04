@@ -1,0 +1,10 @@
+# Add these locations INSIDE the existing server block that listens on 8083.
+# Keep that block's existing API, Payme callback and uploads proxy locations.
+# This is a snippet, not a standalone server configuration.
+location = /admin {
+    return 302 /admin/;
+}
+location /admin/ {
+    alias /srv/ninimum/admin/;
+    try_files $uri $uri/ /admin/index.html;
+}

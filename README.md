@@ -52,7 +52,7 @@ The Products Faol/Nofaol switch is explicitly excluded from the global blocking 
 
 - Vite base: `/admin/`
 - React BrowserRouter basename follows `import.meta.env.BASE_URL`, so routes stay under `/admin/*`.
-- `.env.production` uses the same origin (`http://95.182.118.233`) for API calls. Nginx proxies `/ninimum/api/v1/*` and `/uploads/*` to the Spring Boot backend through the existing port-80 server block, avoiding cross-origin/CORS issues with port 8083.
+- `.env.production` leaves the API URL unset so production API calls use the same origin and port as the Admin website. Nginx proxies `/ninimum/api/v1/*` and `/uploads/*` to the Spring Boot backend through the existing port-80 server block, avoiding cross-origin/CORS issues with port 8083.
 
 ## Responsive/mobile admin
 
@@ -66,7 +66,7 @@ This build keeps the desktop layout and adds responsive behavior for phones/tabl
 - dashboard cards/charts shrink and stack for phone widths
 - login page has a dedicated mobile header/layout
 
-Production deployment base remains `/admin/` and `.env.production` points to `http://95.182.118.233`.
+Production deployment base remains `/admin/`; the production API origin follows the website origin.
 
 
 ## Administrator roles and sessions
@@ -88,3 +88,13 @@ Production deployment base remains `/admin/` and `.env.production` points to `ht
 6. Verify owner login, restricted login, forbidden administrator-management requests, and rejection of an older token after a second login.
 
 The current UI-library migration already has TypeScript system-prop errors in the original source. The role/session changes add no new TypeScript error signatures; production Vite build passes.
+
+
+## Warehouse stage one
+
+The new owner-only Warehouse page requires the backend warehouse schema and `WAREHOUSE_ENABLED=true`. Install `warehouse-step1.sql` before enabling it. See `NinimumBackend/WAREHOUSE_STEP1.md` for activation and user checks. This stage covers available stock, receipt documents, location records, stock history and a read-only preparation queue. Shelf balances, physical/reserved stock and the warehouse scanner app are later stages.
+
+
+## Serving Admin through the existing port 8083 gateway
+
+If the public port-80 address returns a network restriction page while the port-8083 API responds normally, Admin can also be served by the existing Nginx server block listening on 8083. Add the locations from `nginx-admin-location.conf.example` inside that block, preserving its existing API, uploads and Payme callback proxy routes. Do not replace the whole Nginx configuration or add a second conflicting 8083 server block. Back up the configuration, validate with `sudo nginx -t`, and reload only after validation succeeds. Deploy the newly built `dist` contents to the existing `/srv/ninimum/admin/` directory. Test the website at `http://95.182.118.233:8083/admin/login`. This build sends API calls to that same port. Availability still depends on the user's network; this does not remove a network restriction or configure HTTPS.

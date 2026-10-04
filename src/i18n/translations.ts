@@ -31,6 +31,7 @@ export const translations = {
     'login.error.network': 'Backend bilan bog‘lanib bo‘lmadi. Backend ishlayotganini tekshiring.',
     'login.error.generic': 'Kirishda xatolik yuz berdi.',
 
+    'nav.warehouse': 'Ombor',
     'nav.management': 'BOSHQARUV',
     'nav.system': 'TIZIM',
     'nav.dashboard': 'Bosh sahifa',
@@ -129,6 +130,7 @@ export const translations = {
     'login.error.network': 'Не удалось подключиться к backend. Проверьте, что backend запущен.',
     'login.error.generic': 'Ошибка входа.',
 
+    'nav.warehouse': 'Склад',
     'nav.management': 'УПРАВЛЕНИЕ',
     'nav.system': 'СИСТЕМА',
     'nav.dashboard': 'Главная',
@@ -227,6 +229,7 @@ export const translations = {
     'login.error.network': 'Could not connect to the backend. Make sure the backend is running.',
     'login.error.generic': 'Could not sign in.',
 
+    'nav.warehouse': 'Warehouse',
     'nav.management': 'MANAGEMENT',
     'nav.system': 'SYSTEM',
     'nav.dashboard': 'Dashboard',

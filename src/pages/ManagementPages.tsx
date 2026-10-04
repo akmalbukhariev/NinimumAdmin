@@ -10,6 +10,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { LoadState, PageTitle, Panel, StatusChip, TablePanel, dateTime, money, useConfirm, useEnumLabel, useL } from '../components/AdminCommon';
 import * as api from '../api/managementApi';
 import type { Row } from '../api/managementApi';
+import { warehouseStatus } from '../api/warehouseApi';
 
 const useToken = () => useAuth().accessToken!;
 const emptyPage = { items: [] as Row[], total: 0, page: 1, page_size: 20 };
@@ -71,6 +72,13 @@ export function OrdersPage(){
 
 export function ProductsPage() {
   const token = useToken();
+  const [warehouseEnabled, setWarehouseEnabled] = useState<boolean | null>(null);
+  useEffect(() => {
+    let alive = true;
+    warehouseStatus(token).then(status => { if (alive) setWarehouseEnabled(status.enabled); })
+      .catch(() => { if (alive) setWarehouseEnabled(null); });
+    return () => { alive = false; };
+  }, [token]);
   const l = useL();
   const enumLabel = useEnumLabel();
   const { confirm, confirmDialog } = useConfirm();
@@ -334,6 +342,7 @@ export function ProductsPage() {
 
       const changedFields: Row = {};
       Object.entries(currentValues).forEach(([key, value]) => {
+        if (key === "stock_quantity" && warehouseEnabled !== false) return;
         if (!sameEditValue(key, value, editOriginal[key])) changedFields[key] = value;
       });
 
@@ -396,7 +405,7 @@ export function ProductsPage() {
         brand: String(form.brand ?? '').trim() || null,
         price: Number(form.price),
         subscription_price: form.subscription_price === '' ? null : Number(form.subscription_price),
-        stock_quantity: Number(form.stock_quantity),
+        stock_quantity: warehouseEnabled === false ? Number(form.stock_quantity) : 0,
         weight_gram: form.weight_gram === '' ? null : Number(form.weight_gram),
       }, images);
       setCreateOpen(false);
@@ -473,7 +482,11 @@ export function ProductsPage() {
   const removeProduct = async (row: Row) => {
     const ok = await confirm({
       danger: true,
-      message: l(
+      message: warehouseEnabled === true ? l(
+        `“${String(row.name || '')}” mahsulotini nofaol qilasizmi? Ombor tarixi saqlanadi.`,
+        `Деактивировать товар «${String(row.name || '')}»? История склада сохранится.`,
+        `Deactivate “${String(row.name || '')}”? Warehouse history will be retained.`,
+      ) : l(
         `“${String(row.name || '')}” mahsulotini butunlay o‘chirishga ishonchingiz komilmi? Bu amalni ortga qaytarib bo‘lmaydi.`,
         `Вы уверены, что хотите навсегда удалить товар «${String(row.name || '')}»? Это действие нельзя отменить.`,
         `Are you sure you want to permanently delete “${String(row.name || '')}”? This action cannot be undone.`,
@@ -502,10 +515,10 @@ export function ProductsPage() {
   };
 
   const formField = (key: string, label: string, type = 'text') => (
-    <TextField label={label} type={type} value={form[key] ?? ''} onChange={(event) => setForm((value) => ({ ...value, [key]: event.target.value }))} />
+    <TextField disabled={key === "stock_quantity" && warehouseEnabled !== false} helperText={key === "stock_quantity" && warehouseEnabled === true ? l("Qoldiq kirim hujjati orqali o‘zgaradi.", "Остаток меняется документами прихода.", "Stock changes through receipt documents.") : undefined} label={label} type={type} value={form[key] ?? ''} onChange={(event) => setForm((value) => ({ ...value, [key]: event.target.value }))} />
   );
   const editField = (key: string, label: string, type = 'text') => (
-    <TextField label={label} type={type} value={edit?.[key] ?? ''} onChange={(event) => setEdit((value) => value && ({ ...value, [key]: event.target.value }))} />
+    <TextField disabled={key === "stock_quantity" && warehouseEnabled !== false} helperText={key === "stock_quantity" && warehouseEnabled === true ? l("Qoldiq kirim hujjati orqali o‘zgaradi.", "Остаток меняется документами прихода.", "Stock changes through receipt documents.") : undefined} label={label} type={type} value={edit?.[key] ?? ''} onChange={(event) => setEdit((value) => value && ({ ...value, [key]: event.target.value }))} />
   );
 
   return <>
