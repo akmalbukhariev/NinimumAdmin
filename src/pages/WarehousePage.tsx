@@ -52,6 +52,9 @@ export default function WarehousePage() {
   const token = useAuth().accessToken!;
   const l = useL();
   const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [preparationEnabled,setPreparationEnabled] = useState(false);
+  const [workerOpen,setWorkerOpen] = useState(false);
+  const [workerForm,setWorkerForm] = useState({worker_code:'',full_name:'',password:''});
   const [tab,setTab] = useState(0);
   const [page,setPage] = useState(1);
   const [search,setSearch] = useState('');
@@ -80,6 +83,10 @@ export default function WarehousePage() {
   const explain = (err: unknown) => {
     const code = err instanceof ApiError ? err.resultCode : '';
     const messages: Record<string,[string,string,string]> = {
+      WAREHOUSE_PREPARATION_DISABLED: ['Ombor ilovasi hali yoqilmagan. warehouse-step2.sql va backend sozlamasini o‘rnating.','Приложение склада ещё не включено. Установите warehouse-step2.sql и настройку сервера.','Warehouse preparation is not enabled. Install warehouse-step2.sql and enable it on the backend.'],
+      WAREHOUSE_NOT_READY: ['Buyurtma hali qadoqlanmagan.','Заказ ещё не упакован.','The order is not packed yet.'],
+      WAREHOUSE_ORDER_UNAVAILABLE: ['Buyurtma bekor qilingan, to‘lov qaytarilgan yoki kuryerga berilgan.','Заказ отменён, оплата возвращена или заказ передан курьеру.','The order was cancelled, refunded, or handed to a courier.'],
+      WAREHOUSE_PASSWORD_SHORT: ['Parol kamida 6 ta belgidan iborat bo‘lishi kerak.','Пароль должен содержать не менее 6 символов.','Password must contain at least 6 characters.'],
       WAREHOUSE_NOT_ENABLED: ['Ombor hali faollashtirilmagan.','Склад ещё не включён.','Warehouse is not enabled yet.'],
       WAREHOUSE_INVALID_INPUT: ['Majburiy maydonlarni tekshiring. Miqdor musbat butun son bo‘lishi kerak.','Проверьте обязательные поля. Количество должно быть положительным целым числом.','Check required fields. Quantity must be a positive whole number.'],
       WAREHOUSE_DUPLICATE: ['Bu kod allaqachon mavjud.','Этот код уже существует.','This code already exists.'],
@@ -94,6 +101,8 @@ export default function WarehousePage() {
   };
   const label = (kind: unknown) => {
     const labels: Record<string,[string,string,string]> = {
+      WAITING:['Navbatda','В очереди','Waiting'], PICKING:['Tayyorlanmoqda','Собирается','Preparing'], BLOCKED:['Muammo bor','Есть проблема','Problem reported'], READY:['Tayyor','Готов','Ready'], ACTIVE:['Faol','Активен','Active'], INACTIVE:['Nofaol','Неактивен','Inactive'],
+      CLAIM:['Ish boshlandi','Сборка начата','Preparation started'], BARCODE_CHECK:['Kod tekshirildi','Штрихкод проверен','Barcode checked'], MANUAL_CHECK:['Qo‘lda tekshirildi','Проверено вручную','Manual check'], PROBLEM:['Muammo','Проблема','Problem'], RESUME:['Davom etildi','Сборка продолжена','Resumed'], RESET:['Qayta navbatga qo‘yildi','Возвращён в очередь','Returned to queue'],
       OPENING:['Boshlang‘ich qoldiq','Начальный остаток','Opening balance'],
       RECEIPT:['Kirim','Приход','Receipt'], RECEIPT_REVERSAL:['Kirim bekor qilindi','Сторно прихода','Receipt reversal'],
       SALE:['Sotuv','Продажа','Sale'], PAYMENT_REFUND:['To‘lov qaytarilishi','Возврат платежа','Payment refund'],
@@ -110,13 +119,14 @@ export default function WarehousePage() {
       try {
         const status = await api.warehouseStatus(token);
         if (!alive) return;
-        setEnabled(status.enabled);
+        setEnabled(status.enabled); setPreparationEnabled(Boolean(status.preparation_enabled));
         if (!status.enabled) { setData(emptyPage); return; }
         const result = tab === 0 ? await api.stock(token,page,search)
           : tab === 1 ? {items: await api.locations(token),total:0,page:1,page_size:20}
           : tab === 2 ? await api.receipts(token,page)
           : tab === 3 ? await api.movements(token,page,productFilter ? String(productFilter.id) : '')
-          : await api.preparation(token,page);
+          : tab === 4 ? (status.preparation_enabled ? await api.packing(token,page) : await api.preparation(token,page))
+          : {items:await api.workers(token),total:0,page:1,page_size:20};
         if (alive) { setData(result); if (tab === 1) setLocations(result.items); }
       } catch (err) { if (alive) { setData(emptyPage); setError(explain(err)); } }
       finally { if (alive) setLoading(false); }
@@ -159,17 +169,18 @@ export default function WarehousePage() {
     : tab === 1 ? [l('Kod','Код','Code'),l('Nomi','Название','Name'),l('Turi','Тип','Type')]
     : tab === 2 ? [l('Hujjat','Документ','Document'),l('Yetkazib beruvchi','Поставщик','Supplier'),l('Nakladnoy','Накладная','Invoice'),l('Holat','Статус','Status'),l('Sana','Дата','Date'),'']
     : tab === 3 ? [productLabel,l('Harakat','Движение','Movement'),quantityLabel,l('Keyingi qoldiq','Остаток после','Stock after'),l('Asos','Основание','Reference'),l('Kim','Кто','Who'),l('Sana','Дата','Date')]
-    : [l('Buyurtma','Заказ','Order'),quantityLabel,l('Buyurtma sanasi','Дата заказа','Order date'),''];
+    : tab === 4 ? [l('Buyurtma','Заказ','Order'),quantityLabel,l('Holat','Статус','Status'),l('Xodim','Сотрудник','Worker'),l('Buyurtma sanasi','Дата заказа','Order date'),'']
+    : [l('Login','Логин','Login'),l('Ism','Имя','Name'),l('Holat','Статус','Status'),''];
 
   return <>
     <PageTitle title={l('Ombor','Склад','Warehouse')} />
     <Alert severity="info" sx={{mb:2}}>{l(
-      'Bu bosqichda sotuvga mavjud qoldiq hisobga olinadi. Manzil kirimda qayd etiladi; har polkadagi aniq qoldiq va skanerlash keyingi bosqichda qo‘shiladi.',
-      'На этом этапе учитывается доступный для продажи остаток. Ячейка фиксируется в приходе; точные остатки по полкам и сканирование появятся на следующем этапе.',
-      'This stage tracks stock available to sell. Locations are recorded on receipts; exact shelf balances and scanning follow in the next stage.')}</Alert>
+      'Bu bosqichda sotuvga mavjud qoldiq hisobga olinadi. Manzil kirimda qayd etiladi; har javondagi aniq qoldiq keyingi bosqichda qo‘shiladi. Buyurtmalar NinimumStock ilovasida tekshiriladi va qadoqlanadi.',
+      'На этом этапе учитывается доступный для продажи остаток. Ячейка фиксируется в приходе; точные остатки по полкам появятся позже. Заказы проверяются и упаковываются в NinimumStock.',
+      'This stage tracks stock available to sell. Locations are recorded on receipts; exact shelf balances follow later. Orders are checked and packed in NinimumStock.')}</Alert>
     {actionAlert}
     <Tabs value={tab} onChange={(_,value) => {setTab(value);setPage(1);setData(emptyPage);setActionError('');}} variant="scrollable" scrollButtons="auto">
-      {[l('Qoldiq','Остатки','Stock'),l('Manzillar','Ячейки','Locations'),l('Kirimlar','Приходы','Receipts'),l('Harakat tarixi','История движений','Stock history'),l('Tayyorlash navbati','Очередь подготовки','Preparation queue')].map(title => <Tab key={title} label={title} />)}
+      {[l('Qoldiq','Остатки','Stock'),l('Manzillar','Ячейки','Locations'),l('Kirimlar','Приходы','Receipts'),l('Harakat tarixi','История движений','Stock history'),l('Tayyorlash navbati','Очередь подготовки','Preparation queue'),l('Ombor xodimlari','Сотрудники склада','Warehouse workers')].map(title => <Tab key={title} label={title} />)}
     </Tabs>
     <Stack direction={{xs:'column',sm:'row'}} spacing={2} sx={{mt:2}}>
       {tab === 0 && <Box component="form" onSubmit={event => {event.preventDefault();setSearch(searchInput);setPage(1);}} sx={{display:'flex',gap:1}}>
@@ -178,6 +189,7 @@ export default function WarehousePage() {
       </Box>}
       {tab === 3 && <Box sx={{minWidth:280}}><ProductPicker token={token} value={productFilter} onChange={v => {setProductFilter(v);setPage(1);}} label={productLabel} /></Box>}
       {tab === 1 && <Button variant="contained" disabled={!enabled || busy} onClick={() => {setActionError('');setLocationForm({code:'',name:'',type:'SHELF'});setLocationOpen(true);}}>{l('Manzil qo‘shish','Добавить ячейку','Add location')}</Button>}
+      {tab === 5 && <Button variant="contained" disabled={!preparationEnabled || busy} onClick={() => {setWorkerForm({worker_code:'',full_name:'',password:''});setWorkerOpen(true);}}>{l('Xodim qo‘shish','Добавить сотрудника','Add worker')}</Button>}
       {tab === 2 && <Button variant="contained" disabled={!enabled || busy} onClick={openReceipt}>{l('Kirim yaratish','Создать приход','Create receipt')}</Button>}
       <Button startIcon={<RefreshRounded />} disabled={loading || busy} onClick={refresh}>{refreshLabel}</Button>
     </Stack>
@@ -189,14 +201,15 @@ export default function WarehousePage() {
           : tab === 1 ? <><TableCell>{row.code}</TableCell><TableCell>{row.name}</TableCell><TableCell>{label(row.type)}</TableCell></>
           : tab === 2 ? <><TableCell>KR-{row.id}</TableCell><TableCell>{row.supplier_name}</TableCell><TableCell>{row.invoice_number || '—'}</TableCell><TableCell><Chip size="small" label={label(row.status)} /></TableCell><TableCell>{time(row.created_at)}</TableCell><TableCell><Button disabled={busy} onClick={() => run(async () => setDetail(await api.receipt(token,row.id)))}>{l('Ko‘rish','Открыть','View')}</Button></TableCell></>
           : tab === 3 ? <><TableCell>{row.product_name}</TableCell><TableCell>{label(row.kind)}</TableCell><TableCell>{Number(row.quantity_change)>0 ? '+' : ''}{number(row.quantity_change)}</TableCell><TableCell>{number(row.stock_after)}</TableCell><TableCell>{row.reference}</TableCell><TableCell>{row.actor === 'SYSTEM' ? l('Tizim','Система','System') : row.actor}</TableCell><TableCell>{time(row.created_at)}</TableCell></>
-          : <><TableCell>{row.order_number}</TableCell><TableCell>{number(row.quantity)}</TableCell><TableCell>{time(row.ordered_at)}</TableCell><TableCell><Button disabled={busy} onClick={() => run(async () => setOrder({...row,items:await api.preparationItems(token,row.id)}))}>{l('Mahsulotlarni ko‘rish','Посмотреть товары','View items')}</Button></TableCell></>}
+          : tab === 4 ? <><TableCell>{row.order_number}</TableCell><TableCell>{number(row.quantity)}</TableCell><TableCell>{label(row.preparation_status || 'WAITING')}</TableCell><TableCell>{row.worker_code || '—'}</TableCell><TableCell>{time(row.ordered_at)}</TableCell><TableCell><Button disabled={busy} onClick={() => run(async () => setOrder(preparationEnabled ? await api.packingDetail(token,row.id) : {...row,items:await api.preparationItems(token,row.id)}))}>{l('Ko‘rish','Открыть','View')}</Button></TableCell></>
+          : <><TableCell>{row.worker_code}</TableCell><TableCell>{row.full_name}</TableCell><TableCell>{label(row.status)}</TableCell><TableCell><Button disabled={busy} onClick={() => run(async () => {await api.updateWorker(token,row.id,{status:row.status==='ACTIVE'?'INACTIVE':'ACTIVE'});refresh();})}>{row.status==='ACTIVE'?l('Faolsizlantirish','Отключить','Deactivate'):l('Faollashtirish','Включить','Activate')}</Button><Button disabled={busy} onClick={() => run(async () => {const password=window.prompt(l('Yangi parol (kamida 6 belgi)','Новый пароль (минимум 6 символов)','New password (at least 6 characters)'));if(password){await api.updateWorker(token,row.id,{password});refresh();}})}>{l('Parolni yangilash','Сменить пароль','Reset password')}</Button></TableCell></>}
         </TableRow>)}
         {!data.items.length && <TableRow><TableCell colSpan={heads.length}>{l('Ma’lumot yo‘q','Нет данных','No data')}</TableCell></TableRow>}
       </TableBody></Table>
-      {tab !== 1 && <TablePagination component="div" count={data.total} page={page-1} rowsPerPage={20} rowsPerPageOptions={[20]} onPageChange={(_,p) => setPage(p+1)} labelDisplayedRows={({from,to,count}) => `${from}–${to} / ${count}`} />}
+      {tab !== 1 && tab !== 5 && <TablePagination component="div" count={data.total} page={page-1} rowsPerPage={20} rowsPerPageOptions={[20]} onPageChange={(_,p) => setPage(p+1)} labelDisplayedRows={({from,to,count}) => `${from}–${to} / ${count}`} />}
       </TablePanel>}
     </LoadState>
-    {tab === 4 && enabled && <Alert severity="info" sx={{mt:2}}>{l('Navbat to‘langan va hali kuryer qabul qilmagan buyurtmalarni ko‘rsatadi. Hozirgi yetkazish jarayoni ishlashda davom etadi.','Очередь показывает оплаченные заказы, ещё не принятые курьером. Текущий процесс доставки продолжает работать.','The queue shows paid orders not yet accepted by a courier. The current delivery workflow continues to operate.')}</Alert>}
+    {tab === 4 && enabled && <Alert severity="info" sx={{mt:2}}>{l('Bu yerda buyurtmalarni tayyorlash holati va tarixi ko‘rinadi. Ombor ilovasi yoqilganda kuryer faqat tayyor buyurtmani qabul qiladi.','Здесь показаны статусы и история подготовки заказов. При включённом приложении склада курьер принимает только готовый заказ.','This view shows preparation status and order history. When warehouse preparation is enabled, couriers can accept only packed orders.')}</Alert>}
 
     <Dialog open={locationOpen} onClose={() => {if (!busy) setLocationOpen(false);}} fullWidth maxWidth="sm">
       <DialogTitle>{l('Yangi manzil','Новая ячейка','New location')}</DialogTitle><DialogContent>
@@ -235,6 +248,11 @@ export default function WarehousePage() {
       </DialogActions>
     </Dialog>
     <Dialog open={reverseId!==null} onClose={() => {if (!busy) setReverseId(null);}} fullWidth maxWidth="sm"><DialogTitle>{l('Kirimni bekor qilish','Сторно прихода','Reverse receipt')}</DialogTitle><DialogContent>{actionAlert}<Alert severity="warning" sx={{mb:2}}>{l('Bu kirim orqali qo‘shilgan barcha mahsulotlar soni ombordagi qoldiqdan ayriladi. Kirim haqidagi yozuv tarixda saqlanadi.','Все количества прихода будут вычтены из остатка. Исходный документ сохранится.','All receipt quantities will be removed from available stock. The original document stays in history.')}</Alert><TextField fullWidth required label={l('Sabab','Причина','Reason')} value={reason} onChange={e => setReason(e.target.value)} /></DialogContent><DialogActions><Button disabled={busy} onClick={() => setReverseId(null)}>{cancelLabel}</Button><Button color="warning" variant="contained" disabled={busy || !reason.trim()} onClick={() => run(async () => {await api.reverseReceipt(token,reverseId!,reason);setDetail(await api.receipt(token,reverseId!));setReverseId(null);refresh();})}>{l('Kirimni bekor qilish','Выполнить сторно','Reverse')}</Button></DialogActions></Dialog>
-    <Dialog open={Boolean(order)} onClose={() => setOrder(null)} fullWidth maxWidth="sm"><DialogTitle>{order?.order_number}</DialogTitle><DialogContent><Table><TableHead><TableRow><TableCell>{productLabel}</TableCell><TableCell>{quantityLabel}</TableCell><TableCell>{l('Shtrix-kod','Штрихкод','Barcode')}</TableCell></TableRow></TableHead><TableBody>{(order?.items || []).map((item:Row,i:number) => <TableRow key={i}><TableCell>{item.product_name}</TableCell><TableCell>{number(item.quantity)}</TableCell><TableCell>{item.barcode || '—'}</TableCell></TableRow>)}</TableBody></Table></DialogContent><DialogActions><Button onClick={() => setOrder(null)}>{cancelLabel}</Button></DialogActions></Dialog>
+    <Dialog open={workerOpen} onClose={() => {if(!busy)setWorkerOpen(false);}} fullWidth maxWidth="sm"><DialogTitle>{l('Ombor xodimi','Сотрудник склада','Warehouse worker')}</DialogTitle><DialogContent>{actionAlert}<Stack spacing={2} sx={{mt:1}}><TextField label={l('Login','Логин','Login')} helperText="A–Z, 0–9, . _ -" value={workerForm.worker_code} onChange={e => setWorkerForm({...workerForm,worker_code:e.target.value})}/><TextField label={l('Ism','Имя','Name')} value={workerForm.full_name} onChange={e => setWorkerForm({...workerForm,full_name:e.target.value})}/><TextField type="password" label={l('Parol (kamida 6 belgi)','Пароль (минимум 6 символов)','Password (at least 6 characters)')} value={workerForm.password} onChange={e => setWorkerForm({...workerForm,password:e.target.value})}/></Stack></DialogContent><DialogActions><Button disabled={busy} onClick={() => setWorkerOpen(false)}>{cancelLabel}</Button><Button disabled={busy || !workerForm.worker_code.trim() || !workerForm.full_name.trim() || workerForm.password.length<6} onClick={() => run(async () => {await api.createWorker(token,workerForm);setWorkerOpen(false);refresh();})}>{l('Saqlash','Сохранить','Save')}</Button></DialogActions></Dialog>
+    <Dialog open={Boolean(order)} onClose={() => setOrder(null)} fullWidth maxWidth="md"><DialogTitle>{order?.order_number}</DialogTitle><DialogContent>{actionAlert}
+    <Typography>{label(order?.preparation_status || 'WAITING')} · {order?.worker_code || '—'}</Typography>{order?.note && <Alert severity="warning">{order.note}</Alert>}
+    <Table><TableHead><TableRow><TableCell>{productLabel}</TableCell><TableCell>{quantityLabel}</TableCell><TableCell>{l('Tekshirildi','Проверено','Checked')}</TableCell><TableCell>{l('Shtrix-kod','Штрихкод','Barcode')}</TableCell></TableRow></TableHead><TableBody>{(order?.items || []).map((item:Row,i:number) => <TableRow key={i}><TableCell>{item.product_name}</TableCell><TableCell>{number(item.required_quantity ?? item.quantity)}</TableCell><TableCell>{number(item.checked_quantity ?? 0)}</TableCell><TableCell>{item.barcode || '—'}</TableCell></TableRow>)}</TableBody></Table>
+    {(order?.events || []).map((event:Row,i:number) => <Typography key={i} sx={{mt:1}}>{time(event.created_at)} · {event.actor} · {label(event.kind)}{event.quantity!=null ? ` · ${event.quantity}` : ''}{event.note ? ` · ${event.note}` : ''}</Typography>)}
+    </DialogContent><DialogActions>{preparationEnabled && order?.worker_code && <Button disabled={busy} color="warning" onClick={() => run(async () => {const reason=window.prompt(l('Qayta navbatga qo‘yish sababi. Tekshirilgan sonlar tozalanadi.','Причина возврата в очередь. Проверенные количества сбросятся.','Reason for returning to queue. Checked quantities will be cleared.'));if(reason?.trim()){await api.resetPacking(token,order.id,reason);setOrder(await api.packingDetail(token,order.id));refresh();}})}>{l('Qayta navbatga qo‘yish','Вернуть в очередь','Return to queue')}</Button>}<Button onClick={() => setOrder(null)}>{cancelLabel}</Button></DialogActions></Dialog>
   </>;
 }

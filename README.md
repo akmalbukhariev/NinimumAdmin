@@ -98,3 +98,7 @@ The new owner-only Warehouse page requires the backend warehouse schema and `WAR
 ## Serving Admin through the existing port 8083 gateway
 
 If the public port-80 address returns a network restriction page while the port-8083 API responds normally, Admin can also be served by the existing Nginx server block listening on 8083. Add the locations from `nginx-admin-location.conf.example` inside that block, preserving its existing API, uploads and Payme callback proxy routes. Do not replace the whole Nginx configuration or add a second conflicting 8083 server block. Back up the configuration, validate with `sudo nginx -t`, and reload only after validation succeeds. Deploy the newly built `dist` contents to the existing `/srv/ninimum/admin/` directory. Test the website at `http://95.182.118.233:8083/admin/login`. This build sends API calls to that same port. Availability still depends on the user's network; this does not remove a network restriction or configure HTTPS.
+
+### Warehouse worker application
+
+The Warehouse page now includes worker account management, packing status, checked quantities and action history. Install the backend warehouse-step2.sql migration and enable warehouse.preparation-enabled to connect NinimumStock and require packing before courier assignment. Follow the backend WAREHOUSE_STEP2.md activation guide. Deployment remains manual.

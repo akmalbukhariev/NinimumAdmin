@@ -6,7 +6,7 @@ const get = <T>(token: string, path: string) => apiRequest<T>(`${base}${path}`, 
 const post = <T>(token: string, path: string, body: unknown = {}) => apiRequest<T>(`${base}${path}`, {
   token, method: 'POST', body: JSON.stringify(body),
 }).then(r => r.resultData);
-export const warehouseStatus = (token: string) => get<{enabled: boolean; stage: number}>(token, '/status');
+export const warehouseStatus = (token: string) => get<{enabled: boolean; stage: number; preparation_enabled: boolean}>(token, '/status');
 export const locations = (token: string) => get<Row[]>(token, '/locations');
 export const createLocation = (token: string, body: Row) => post<number>(token, '/locations', body);
 export const stock = (token: string, page: number, search: string) => get<PageData>(token, `/stock?page=${page}&page_size=20&search=${encodeURIComponent(search)}`);
@@ -18,3 +18,10 @@ export const reverseReceipt = (token: string, id: number, reason: string) => pos
 export const movements = (token: string, page: number, product: string) => get<PageData>(token, `/movements?page=${page}&page_size=20${product ? `&product_id=${encodeURIComponent(product)}` : ''}`);
 export const preparation = (token: string, page: number) => get<PageData>(token, `/preparation?page=${page}&page_size=20`);
 export const preparationItems = (token: string, id: number) => get<Row[]>(token, `/preparation/${id}/items`);
+
+export const workers = (token: string) => get<Row[]>(token, '/workers');
+export const createWorker = (token: string, body: Row) => post<unknown>(token, '/workers', body);
+export const updateWorker = (token: string, id: number, body: Row) => apiRequest(`${base}/workers/${id}`, {token,method:'PUT',body:JSON.stringify(body)});
+export const packing = (token: string, page: number) => get<PageData>(token, `/packing?page=${page}`);
+export const packingDetail = (token: string, id: number) => get<Row>(token, `/packing/${id}`);
+export const resetPacking = (token: string, id: number, reason: string) => post<unknown>(token, `/packing/${id}/reset`, {reason});
