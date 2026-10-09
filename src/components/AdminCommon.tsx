@@ -14,11 +14,14 @@ const enumLabels: Record<string, [string, string, string]> = {
   PENDING: ['Kutilmoqda', 'Ожидает', 'Pending'],
   CONFIRMED: ['Tasdiqlandi', 'Подтверждён', 'Confirmed'],
   PREPARING: ['Tayyorlanmoqda', 'Готовится', 'Preparing'],
+  READY: ['Tayyor', 'Готов', 'Ready'],
   ACCEPTED: ['Qabul qilindi', 'Принят', 'Accepted'],
   ON_THE_WAY: ['Yo‘lda', 'В пути', 'On the way'],
   DELIVERED: ['Yetkazildi', 'Доставлен', 'Delivered'],
   CANCELLED: ['Bekor qilindi', 'Отменён', 'Cancelled'],
   PAID: ['To‘langan', 'Оплачен', 'Paid'],
+  RETURNING: ['Qaytarilmoqda', 'Возвращается', 'Returning'],
+  RETURN_REPAIR: ['Qaytarish holatini tiklash', 'Исправление возврата', 'Return status repair'],
   FAILED: ['Muvaffaqiyatsiz', 'Ошибка', 'Failed'],
   REFUNDED: ['Qaytarilgan', 'Возвращён', 'Refunded'],
   DELETED: ['O‘chirilgan', 'Удалён', 'Deleted'],
@@ -105,8 +108,8 @@ export function LoadState({ loading, error, onRetry, children }: { loading: bool
 export function StatusChip({ value }: { value?: unknown }) {
   const enumLabel = useEnumLabel();
   const v = String(value ?? '-').toUpperCase();
-  const success = ['ACTIVE','PAID','DELIVERED','CONFIRMED','ANSWERED','ONLINE','Y'].includes(v);
-  const warning = ['PENDING','PREPARING','ACCEPTED','ON_THE_WAY','WAITING_ASSIGNMENT','WAITING'].includes(v);
+  const success = ['ACTIVE','PAID','DELIVERED','CONFIRMED','READY','ANSWERED','ONLINE','Y'].includes(v);
+  const warning = ['PENDING','PREPARING','ACCEPTED','ON_THE_WAY','RETURNING','WAITING_ASSIGNMENT','WAITING'].includes(v);
   const error = ['INACTIVE','CANCELLED','FAILED','DELETED','HIDDEN','EXPIRED','OFFLINE','N'].includes(v);
   return <Chip size="small" label={enumLabel(v)} color={success ? 'success' : warning ? 'warning' : error ? 'error' : 'default'} variant={success || warning || error ? 'filled' : 'outlined'} />;
 }

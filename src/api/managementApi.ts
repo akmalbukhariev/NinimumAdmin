@@ -214,3 +214,5 @@ export const imageUrl = (value?: string) => {
   if (value.startsWith('products/') || value.startsWith('reviews/')) return `${API_BASE_URL}/uploads/${value}`;
   return `${API_BASE_URL}/uploads/products/${value}`;
 };
+
+export const correctOrderStatus = (token:string,id:number,data:Row) => apiRequest<null>(`${m}/orders/${id}/correction`,{token,method:'POST',body:JSON.stringify(data)});
