@@ -20,6 +20,7 @@ const enumLabels: Record<string, [string, string, string]> = {
   DELIVERED: ['Yetkazildi', 'Доставлен', 'Delivered'],
   CANCELLED: ['Bekor qilindi', 'Отменён', 'Cancelled'],
   PAID: ['To‘langan', 'Оплачен', 'Paid'],
+  RETURNED: ['Omborga qaytarildi', 'Возвращён на склад', 'Returned to warehouse'],
   RETURNING: ['Qaytarilmoqda', 'Возвращается', 'Returning'],
   RETURN_REPAIR: ['Qaytarish holatini tiklash', 'Исправление возврата', 'Return status repair'],
   FAILED: ['Muvaffaqiyatsiz', 'Ошибка', 'Failed'],
