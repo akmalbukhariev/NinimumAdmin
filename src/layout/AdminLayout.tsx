@@ -37,6 +37,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { canAccess } from '../auth/permissions';
 import { useAuth } from '../auth/AuthProvider';
 import { API_ACTIVITY_EVENT } from '../api/client';
+import { ProblemBell } from '../components/OrderProblems';
 import LanguageSelector from '../components/LanguageSelector';
 import { useLanguage } from '../i18n/LanguageProvider';
 import type { TranslationKey } from '../i18n/translations';
@@ -47,6 +48,7 @@ type NavItem = { labelKey: TranslationKey; path: string; icon: ReactNode };
 
 const primaryItems: NavItem[] = [
   { labelKey: 'nav.dashboard', path: '/dashboard', icon: <DashboardRounded /> },
+  { labelKey: 'nav.problems', path: '/problems', icon: <NotificationsNoneRounded /> },
   { labelKey: 'nav.orders', path: '/orders', icon: <ReceiptLongRounded /> },
   { labelKey: 'nav.products', path: '/products', icon: <Inventory2Rounded /> },
   { labelKey: 'nav.categories', path: '/categories', icon: <CategoryRounded /> },
@@ -224,7 +226,7 @@ export default function AdminLayout() {
           <Box sx={{ display: { xs: 'none', md: 'block' } }}><LanguageSelector /></Box>
 
           <Tooltip title={t('header.notifications')}>
-            <IconButton sx={{ width: { xs: 40, sm: 42 }, height: { xs: 40, sm: 42 }, bgcolor: '#F7F8FB', border: '1px solid #ECEDEF' }}><NotificationsNoneRounded /></IconButton>
+            <ProblemBell/>
           </Tooltip>
 
           <Box sx={{ display: { xs: 'none', sm: 'block' }, cursor: 'pointer' }} onClick={handleProfileClick}>

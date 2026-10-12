@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './auth/ProtectedRoute';
 import AdminLayout from './layout/AdminLayout';
+import { OrderProblemsPage, TimerSettingsPage } from './components/OrderProblems';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import WarehousePage from './pages/WarehousePage';
@@ -13,6 +14,8 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AdminLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/problems" element={<OrderProblemsPage />} />
+          <Route path="/order-timers" element={<TimerSettingsPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/categories" element={<CategoriesPage />} />

@@ -29,6 +29,7 @@ import { useNavigate } from 'react-router-dom';
 import { getDashboard } from '../api/adminApi';
 import type { DashboardData, DashboardOrderStatus } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
+import { ProblemSummaryCard } from '../components/OrderProblems';
 import StatCard from '../components/StatCard';
 import { useEnumLabel } from '../components/AdminCommon';
 import { useLanguage } from '../i18n/LanguageProvider';
@@ -170,6 +171,7 @@ export default function DashboardPage() {
         </Button>
       </Box>
 
+      <ProblemSummaryCard/>
       {error && (
         <Alert severity="error" sx={{ mt: 2.5 }} action={<Button color="inherit" size="small" onClick={() => void loadDashboard()}>{t('common.retry')}</Button>}>
           {t('dashboard.error')}
