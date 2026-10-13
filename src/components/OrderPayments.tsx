@@ -70,7 +70,8 @@ export function OrderPayments({ orderId, payments, order, monitorEnabled }: { or
           </Stack>
         </Box>;
       })}
-    {payments?.some(payment => payment.provider === 'PAYME' && payment.provider_transaction_id) && <>
+    {order?.partial_return_status && order.payment_status==='PAID' && <Alert severity="warning">{l('Qisman qaytarish uchun to‘liq Payme to‘lovini bekor qilmang. Aniq qisman summa alohida qaytarilishi va tasdiqlanishi kerak.','Не отменяйте весь платёж Payme для частичного возврата. Точная частичная сумма должна быть возвращена и подтверждена отдельно.','Do not cancel the whole Payme payment for a partial return. The exact partial amount requires a separate refund and confirmation.')}</Alert>}
+    {!order?.partial_return_status && payments?.some(payment => payment.provider === 'PAYME' && payment.provider_transaction_id) && <>
       <Divider />
       <Alert severity="info">{l('Pulni qaytarish Payme Business’da bajariladi. To‘lov ID sini nusxalang, Payme Business’da shu to‘lovni toping va bekor qiling. So‘ng bu oynadagi «Yangilash» tugmasini bosing. Faqat buyurtma holatini o‘zgartirish pulni qaytarmaydi.', 'Возврат выполняется в Payme Business. Скопируйте ID платежа, найдите платёж в Payme Business и отмените его. Затем нажмите «Обновить» в этом окне. Изменение статуса заказа само по себе не возвращает деньги.', 'Refunds are completed in Payme Business. Copy the payment ID, find that payment in Payme Business and cancel it. Then press Refresh in this dialog. Changing the order status alone does not return money.')}</Alert>
       <Button component="a" href="https://merchant.payme.uz/business" target="_blank" rel="noopener noreferrer" variant="contained" endIcon={<OpenInNewRounded />} sx={{ alignSelf: 'flex-start' }}>{l('Bekor qilish / pulni qaytarish — Payme Business', 'Отмена / возврат — Payme Business', 'Cancel / refund — Payme Business')}</Button>

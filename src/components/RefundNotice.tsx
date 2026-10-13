@@ -4,7 +4,7 @@ import { dateTime, useL } from './AdminCommon';
 
 export function RefundNotice({ order, compact = false }: { order: Row; compact?: boolean }) {
   const l = useL();
-  if (order.payment_status !== 'PAID' || !['CANCELLED', 'RETURNING', 'RETURNED'].includes(order.status)) return null;
+  if (order.payment_status !== 'PAID' || Number(order.refund_pending)!==1) return null;
   const since = Date.parse(order.refund_pending_since || '');
   const overdue = Number.isFinite(since) && Date.now() - since > 24 * 60 * 60 * 1000;
   const text = overdue
