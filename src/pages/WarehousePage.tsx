@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Autocomplete, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, Tab, Table, TableBody, TableCell, TableHead, TablePagination, TableRow, Tabs, TextField, Typography } from '@mui/material';
 import RefreshRounded from '@mui/icons-material/RefreshRounded';
 import { useAuth } from '../auth/AuthProvider';
-import { LoadState, PageTitle, TablePanel, useL } from '../components/AdminCommon';
+import { LoadState, PageTitle, TablePanel, useL, dateTime } from '../components/AdminCommon';
 import { ApiError } from '../api/client';
 import { listProducts, type Row, type PageData } from '../api/managementApi';
 import * as api from '../api/warehouseApi';
@@ -11,16 +11,7 @@ type Line = { product: Row | null; quantity: string; location_id: string };
 const emptyPage: PageData = {items: [],total: 0,page: 1,page_size: 20};
 const blankLine = (): Line => ({product: null, quantity: '1', location_id: ''});
 const number = (n: unknown) => Number(n ?? 0).toLocaleString('en-US');
-function time(value: unknown) {
-  if (!value) return '—';
-  // New warehouse dates are explicit UTC. Existing order timestamps retain their backend format.
-  const raw = String(value);
-  if (!raw.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(raw)) return raw;
-  const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? raw : new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Tashkent', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
-  }).format(d);
-}
+const time = dateTime;
 
 function ProductPicker({token, value, onChange, label}: {token: string;value: Row | null;onChange: (v: Row | null) => void;label: string}) {
   const [query, setQuery] = useState('');
@@ -72,6 +63,10 @@ export default function WarehousePage() {
   const [locationForm,setLocationForm] = useState({code:'',name:'',type:'SHELF'});
   const [receiptOpen,setReceiptOpen] = useState(false);
   const [supplier,setSupplier] = useState('');
+  const [supplierOptions,setSupplierOptions] = useState<Row[]>([]);
+  const [supplierId,setSupplierId] = useState('');
+  const [invoiceAmount,setInvoiceAmount] = useState('');
+  const [invoiceDate,setInvoiceDate] = useState('');
   const [invoice,setInvoice] = useState('');
   const [note,setNote] = useState('');
   const [lines,setLines] = useState<Line[]>([blankLine()]);
@@ -146,16 +141,17 @@ export default function WarehousePage() {
   async function openReceipt() {
     await run(async () => {
       setLocations(await api.locations(token));
+      setSupplierOptions(await api.suppliers(token));setSupplierId('');setInvoiceAmount('');setInvoiceDate(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tashkent',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()));
       setSupplier('');setInvoice('');setNote('');setLines([blankLine()]);setReceiptOpen(true);
     });
   }
   async function saveReceipt() {
     await run(async () => {
       const ids = lines.map(item => item.product?.id);
-      if (!supplier.trim() || lines.some(item => !item.product || !item.location_id || !Number.isSafeInteger(Number(item.quantity)) || Number(item.quantity)<=0) || new Set(ids).size !== ids.length) {
+      if ((!supplierId && !supplier.trim()) || (supplierId && (!(Number(invoiceAmount)>0) || !invoiceDate || !invoice.trim())) || lines.some(item => !item.product || !item.location_id || !Number.isSafeInteger(Number(item.quantity)) || Number(item.quantity)<=0) || new Set(ids).size !== ids.length) {
         throw new ApiError('', new Set(ids).size !== ids.length ? 'WAREHOUSE_DUPLICATE_PRODUCT' : 'WAREHOUSE_INVALID_INPUT');
       }
-      await api.createReceipt(token,{supplier_name:supplier,invoice_number:invoice,note,
+      await api.createReceipt(token,{supplier_name:supplier,supplier_id:supplierId?Number(supplierId):undefined,invoice_amount:supplierId?invoiceAmount:undefined,invoice_date:supplierId?invoiceDate:undefined,invoice_number:invoice,note,
         items:lines.map(item => ({product_id:item.product!.id,quantity:Number(item.quantity),location_id:Number(item.location_id)}))});
       setReceiptOpen(false);refresh();
     });
@@ -224,7 +220,9 @@ export default function WarehousePage() {
         <Alert severity="info" sx={{mb:2}}>{l('Qoralama qoldiqni o‘zgartirmaydi. Saqlagandan keyin tekshiring va tasdiqlang.','Черновик не меняет остаток. После сохранения проверьте и подтвердите.','A draft does not change stock. Review and confirm it after saving.')}</Alert>
         {!locations.length && <Alert severity="warning" sx={{mb:2}}>{l('Avval Manzillar bo‘limida manzil yarating.','Сначала создайте ячейку в разделе Ячейки.','Create a location in the Locations tab first.')}</Alert>}
         <Stack spacing={2}>
-          <TextField required label={l('Yetkazib beruvchi nomi','Название поставщика','Supplier name')} value={supplier} onChange={e => setSupplier(e.target.value)} />
+          <TextField select label={l('Yetkazib beruvchi','Поставщик','Supplier')} value={supplierId} onChange={e=>setSupplierId(e.target.value)}><MenuItem value="">{l('Ro‘yxatdan tashqari','Вне реестра','Unregistered supplier')}</MenuItem>{supplierOptions.filter(s=>s.is_active).map(s=><MenuItem key={s.id} value={String(s.id)}>{s.name}</MenuItem>)}</TextField>
+          {!supplierId&&<TextField required label={l('Yetkazib beruvchi nomi','Название поставщика','Supplier name')} value={supplier} onChange={e => setSupplier(e.target.value)} />}
+          {!!supplierId&&<><TextField required type="number" label={l('Nakladnoy jami summasi','Общая сумма накладной','Invoice total')} value={invoiceAmount} onChange={e=>setInvoiceAmount(e.target.value)}/><TextField required type="date" label={l('Nakladnoy sanasi','Дата накладной','Invoice date')} slotProps={{inputLabel:{shrink:true}}} value={invoiceDate} onChange={e=>setInvoiceDate(e.target.value)}/></>}
           <TextField label={l('Nakladnoy raqami','Номер накладной','Invoice number')} value={invoice} onChange={e => setInvoice(e.target.value)} />
           <TextField label={l('Izoh','Примечание','Note')} value={note} onChange={e => setNote(e.target.value)} />
           {lines.map((item,i) => <Box key={i} sx={{display:'grid',gridTemplateColumns:{xs:'1fr',md:'2fr 1fr 1fr auto'},gap:1,alignItems:'start'}}>

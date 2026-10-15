@@ -25,3 +25,12 @@ export const updateWorker = (token: string, id: number, body: Row) => apiRequest
 export const packing = (token: string, page: number) => get<PageData>(token, `/packing?page=${page}`);
 export const packingDetail = (token: string, id: number) => get<Row>(token, `/packing/${id}`);
 export const resetPacking = (token: string, id: number, reason: string) => post<unknown>(token, `/packing/${id}/reset`, {reason});
+
+export const suppliers = (token: string, search = '') => get<Row[]>(token, `/suppliers?search=${encodeURIComponent(search)}`);
+export const supplierDetail = (token: string, id: number) => get<Row>(token, `/suppliers/${id}`);
+export const saveSupplier = (token: string, id: number | undefined, body: Row) => id
+  ? apiRequest(`${base}/suppliers/${id}`, {token, method:'PUT', body:JSON.stringify(body)}).then(r=>r.resultData)
+  : post<number>(token, '/suppliers', body);
+export const recordSupplierPayment = (token: string, id: number, body: Row) => post<number>(token, `/suppliers/${id}/payment-records`, body);
+export const voidSupplierPayment = (token: string, id: number, payment: number, reason: string) => post<unknown>(token, `/suppliers/${id}/payment-records/${payment}/void`, {reason});
+export const supplierCalendar = (token: string, from: string, to: string) => get<Row[]>(token, `/suppliers/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);

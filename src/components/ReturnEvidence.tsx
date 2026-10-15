@@ -5,7 +5,7 @@ export default function ReturnEvidence({ photo, reason }: { photo?: string | nul
   const l = useL();
   if (!photo && !reason) return null;
   return <Stack spacing={1} sx={{ my: 2 }}>
-    <Typography fontWeight={700}>{l('Qaytarish dalili', 'Подтверждение возврата', 'Return evidence')}</Typography>
+    <Typography sx={{fontWeight:700}}>{l('Qaytarish dalili', 'Подтверждение возврата', 'Return evidence')}</Typography>
     {reason && <Typography>{reason}</Typography>}
     {photo && <Box component="img" src={photo} alt={l('Qaytarish rasmi', 'Фото возврата', 'Return photo')}
       sx={{ width: '100%', maxWidth: 640, maxHeight: 360, objectFit: 'contain', objectPosition: 'left' }} />}

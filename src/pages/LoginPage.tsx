@@ -79,8 +79,8 @@ export default function LoginPage() {
           justifyContent: 'space-between',
         }}
       >
-        <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} sx={{ position: 'relative', zIndex: 2 }}>
-          <Box display="flex" alignItems="center" gap={1.4}>
+        <Box sx={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:2, position: 'relative', zIndex: 2 }}>
+          <Box sx={{display:"flex",alignItems:"center",gap:1.4}}>
             <Box sx={{ width: 42, height: 42, borderRadius: 3, bgcolor: '#FD473C', display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 21 }}>N</Box>
             <Box>
               <Typography sx={{ fontSize: 19, fontWeight: 850 }}>Ninimum</Typography>
@@ -99,7 +99,7 @@ export default function LoginPage() {
           </Typography>
         </Box>
 
-        <Box display="flex" gap={1} alignItems="center" sx={{ color: '#7E878E', position: 'relative', zIndex: 2 }}>
+        <Box sx={{display:"flex",gap:1,alignItems:"center", color: '#7E878E', position: 'relative', zIndex: 2 }}>
           <StorefrontRounded sx={{ fontSize: 18 }} />
           <Typography sx={{ fontSize: 12 }}>{t('login.platform')}</Typography>
         </Box>
@@ -125,7 +125,7 @@ export default function LoginPage() {
             <LockOutlined />
           </Box>
           <Typography variant="h4" sx={{ fontSize: { xs: 26, sm: 29 } }}>{t('login.title')}</Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.8, fontSize: 13.5 }}>
+          <Typography sx={{color:"text.secondary", mt: 0.8, fontSize: 13.5 }}>
             {t('login.subtitle')}
           </Typography>
 
@@ -152,7 +152,7 @@ export default function LoginPage() {
               placeholder={t('login.passwordPlaceholder')}
               autoComplete="current-password"
               disabled={submitting}
-              InputProps={{
+              slotProps={{input:{
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton onClick={() => setShowPassword((value) => !value)} edge="end" tabIndex={-1}>
@@ -160,7 +160,7 @@ export default function LoginPage() {
                     </IconButton>
                   </InputAdornment>
                 ),
-              }}
+              }}}
             />
 
             <Button

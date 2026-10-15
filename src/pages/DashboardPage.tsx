@@ -31,7 +31,7 @@ import type { DashboardData, DashboardOrderStatus } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
 import { ProblemSummaryCard } from '../components/OrderProblems';
 import StatCard from '../components/StatCard';
-import { useEnumLabel } from '../components/AdminCommon';
+import { dateTime, useEnumLabel } from '../components/AdminCommon';
 import { useLanguage } from '../i18n/LanguageProvider';
 
 const statusColors: Record<string, { bg: string; color: string }> = {
@@ -189,10 +189,10 @@ export default function DashboardPage() {
 
           <Box sx={{ mt: 2, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', xl: '1.65fr 1fr' } }}>
             <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.6 }, border: '1px solid', borderColor: 'divider' }}>
-              <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2}>
+              <Box sx={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:2}}>
                 <Box>
                   <Typography variant="h6">{t('dashboard.salesOverview')}</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>{t('dashboard.salesSubtitle')}</Typography>
+                  <Typography variant="body2" sx={{color:"text.secondary", mt: 0.35 }}>{t('dashboard.salesSubtitle')}</Typography>
                 </Box>
                 <Button size="small" variant="outlined" sx={{ color: 'text.primary', borderColor: 'divider' }}>{t('dashboard.last7Days')}</Button>
               </Box>
@@ -224,10 +224,10 @@ export default function DashboardPage() {
             </Paper>
 
             <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.6 }, border: '1px solid', borderColor: 'divider' }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Box sx={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <Box>
                   <Typography variant="h6">{t('dashboard.orderStatus')}</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>{t('dashboard.todayOrders')}: {formatNumber(todayOrderTotal)}</Typography>
+                  <Typography variant="body2" sx={{color:"text.secondary", mt: 0.35 }}>{t('dashboard.todayOrders')}: {formatNumber(todayOrderTotal)}</Typography>
                 </Box>
                 <IconButton size="small"><MoreHorizRounded /></IconButton>
               </Box>
@@ -250,7 +250,7 @@ export default function DashboardPage() {
                   [t('dashboard.status.onTheWay'), '#3D7CF4', groupedStatuses.onTheWay],
                   [t('dashboard.status.cancelled'), '#D9D9D9', groupedStatuses.cancelled],
                 ].map(([label, color, count]) => (
-                  <Box key={String(label)} display="flex" alignItems="center" gap={1}>
+                  <Box key={String(label)} sx={{display:"flex",alignItems:"center",gap:1}}>
                     <Box sx={{ width: 8, height: 8, borderRadius: 99, bgcolor: String(color) }} />
                     <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{String(label)}</Typography>
                     <Typography sx={{ ml: 'auto', pr: 1, fontSize: 12.5, fontWeight: 800 }}>{formatNumber(Number(count))}</Typography>
@@ -265,13 +265,13 @@ export default function DashboardPage() {
               <Box sx={{ p: { xs: 2, sm: 2.6 }, pb: { xs: 1.4, sm: 1.8 }, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: { xs: 1.2, sm: 2 } }}>
                 <Box>
                   <Typography variant="h6">{t('dashboard.recentOrders')}</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>{t('dashboard.recentOrdersSubtitle')}</Typography>
+                  <Typography variant="body2" sx={{color:"text.secondary", mt: 0.35 }}>{t('dashboard.recentOrdersSubtitle')}</Typography>
                 </Box>
                 <Button endIcon={<ArrowForwardRounded />} size="small" onClick={() => navigate('/orders')}>{t('dashboard.viewAll')}</Button>
               </Box>
 
               {data.recent_orders.length === 0 ? (
-                <Typography color="text.secondary" sx={{ p: 3, pt: 1 }}>{t('common.noData')}</Typography>
+                <Typography sx={{color:"text.secondary", p: 3, pt: 1 }}>{t('common.noData')}</Typography>
               ) : (
                 <Box sx={{ overflowX: 'auto' }}>
                   <Table sx={{ minWidth: 720 }}>
@@ -294,7 +294,7 @@ export default function DashboardPage() {
                               <Chip size="small" label={enumLabel(order.status)} sx={{ height: 25, bgcolor: statusStyle.bg, color: statusStyle.color, fontSize: 11 }} />
                             </TableCell>
                             <TableCell sx={{ py: 1.45, fontSize: 12, color: 'text.secondary', borderColor: 'divider' }}>
-                              {order.ordered_at ? new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(order.ordered_at.replace(' ', 'T'))) : '-'}
+                              {dateTime(order.ordered_at)}
                             </TableCell>
                             <TableCell sx={{ py: 1.45, borderColor: 'divider' }}><IconButton size="small"><MoreHorizRounded fontSize="small" /></IconButton></TableCell>
                           </TableRow>
@@ -307,10 +307,10 @@ export default function DashboardPage() {
             </Paper>
 
             <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.6 }, border: '1px solid', borderColor: 'divider' }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Box sx={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <Box>
                   <Typography variant="h6">{t('dashboard.lowStock')}</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>{t('dashboard.lowStockSubtitle')}</Typography>
+                  <Typography variant="body2" sx={{color:"text.secondary", mt: 0.35 }}>{t('dashboard.lowStockSubtitle')}</Typography>
                 </Box>
                 <Box sx={{ width: 38, height: 38, display: 'grid', placeItems: 'center', borderRadius: 2.5, bgcolor: '#FFF1F0', color: '#FD473C' }}>
                   <Inventory2Outlined fontSize="small" />
@@ -319,13 +319,13 @@ export default function DashboardPage() {
 
               <Box sx={{ mt: 2.6 }}>
                 {data.low_stock_products.length === 0 ? (
-                  <Typography color="text.secondary" sx={{ fontSize: 13 }}>{t('common.noData')}</Typography>
+                  <Typography sx={{color:"text.secondary", fontSize: 13 }}>{t('common.noData')}</Typography>
                 ) : data.low_stock_products.map((item, index) => {
                   const stock = normalizeNumber(item.stock_quantity);
                   const percentage = Math.min(Math.max((stock / 20) * 100, stock > 0 ? 6 : 0), 100);
                   return (
                     <Box key={item.product_id} sx={{ mb: index === data.low_stock_products.length - 1 ? 0 : 2.4 }}>
-                      <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
+                      <Box sx={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:1}}>
                         <Typography sx={{ fontSize: 13, fontWeight: 700 }}>{item.product_name}</Typography>
                         <Typography sx={{ fontSize: 12, color: stock < 10 ? '#D53D34' : '#B97108', fontWeight: 800 }}>{formatNumber(stock)} {t('dashboard.left')}</Typography>
                       </Box>

@@ -32,6 +32,7 @@ export const translations = {
     'login.error.generic': 'Kirishda xatolik yuz berdi.',
 
     'nav.warehouse': 'Ombor',
+    'nav.suppliers': 'Yetkazib beruvchilar',
     'nav.management': 'BOSHQARUV',
     'nav.system': 'TIZIM',
     'nav.dashboard': 'Bosh sahifa',
@@ -133,6 +134,7 @@ export const translations = {
     'login.error.generic': 'Ошибка входа.',
 
     'nav.warehouse': 'Склад',
+    'nav.suppliers': 'Поставщики',
     'nav.management': 'УПРАВЛЕНИЕ',
     'nav.system': 'СИСТЕМА',
     'nav.dashboard': 'Главная',
@@ -234,6 +236,7 @@ export const translations = {
     'login.error.generic': 'Could not sign in.',
 
     'nav.warehouse': 'Warehouse',
+    'nav.suppliers': 'Suppliers',
     'nav.management': 'MANAGEMENT',
     'nav.system': 'SYSTEM',
     'nav.dashboard': 'Dashboard',

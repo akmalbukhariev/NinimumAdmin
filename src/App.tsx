@@ -5,6 +5,7 @@ import { OrderProblemsPage, TimerSettingsPage } from './components/OrderProblems
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import WarehousePage from './pages/WarehousePage';
+import SuppliersPage from './pages/SuppliersPage';
 import { CategoriesPage, CustomersPage, DeliveryPage, OrdersPage, ProductsPage, PromotionsPage, ReviewsPage, SettingsPage, SubscriptionsPage } from './pages/ManagementPages';
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/reviews" element={<ReviewsPage />} />
           <Route path="/promotions" element={<PromotionsPage />} />
           <Route path="/warehouse" element={<WarehousePage />} />
+          <Route path="/suppliers" element={<SuppliersPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

@@ -38,7 +38,7 @@ export function OrderPayments({ orderId, payments, order, monitorEnabled }: { or
       setFeedback({ error: true, text: l('Nusxalab bo‘lmadi. ID ni belgilab, qo‘lda nusxalang.', 'Не удалось скопировать. Выделите ID и скопируйте вручную.', 'Could not copy. Select the ID and copy it manually.') });
     }
   };
-  const timestamp = (value: unknown) => Number(value) > 0 ? new Date(Number(value)).toLocaleString() : '—';
+  const timestamp = (value: unknown) => Number(value) > 0 ? dateTime(Number(value)) : '—';
   return <Stack spacing={2} sx={{ my: 3 }}>
     <Typography variant="h6">{l('To‘lov va pulni qaytarish', 'Оплата и возврат средств', 'Payment and refund')}</Typography>
     {order && <RefundNotice order={order}/>}
@@ -59,12 +59,12 @@ export function OrderPayments({ orderId, payments, order, monitorEnabled }: { or
               <Typography sx={{ fontWeight: 700 }}>{payment.provider} · {money(payment.amount)}</Typography>
               <StatusChip value={refunded ? 'REFUNDED' : payment.status} />
             </Stack>
-            <Typography variant="body2" color="text.secondary">{payme ? l('Payme to‘lov ID si', 'ID платежа Payme', 'Payme payment ID') : l('To‘lov ID si', 'ID платежа', 'Payment ID')}</Typography>
+            <Typography variant="body2" sx={{color:"text.secondary"}}>{payme ? l('Payme to‘lov ID si', 'ID платежа Payme', 'Payme payment ID') : l('To‘lov ID si', 'ID платежа', 'Payment ID')}</Typography>
             <Typography sx={{ overflowWrap: 'anywhere', userSelect: 'text', fontFamily: 'monospace' }}>{paymentId || '—'}</Typography>
             {!!paymentId && <Button startIcon={<ContentCopyRounded />} sx={{ alignSelf: 'flex-start' }} onClick={() => void copy(paymentId)}>{l('To‘lov ID sini nusxalash', 'Копировать ID платежа', 'Copy payment ID')}</Button>}
             {monitorEnabled && payment.status === 'PAID' && payment.refund_check_error && <Alert severity="warning">{l('Payme holatini tekshirib bo‘lmadi. Tizim qayta urinadi; pul qaytarilgani tasdiqlanmadi.', 'Не удалось проверить статус Payme. Проверка повторится; возврат денег не подтверждён.', 'Could not check Payme status. The system will retry; the refund has not been confirmed.')}</Alert>}
             {monitorEnabled && payment.status === 'PAID' && !payment.refund_check_error && payment.refund_receipt_state === 21 && !refunded && <Alert severity="info">{l('Payme pulni qaytarishni navbatga qo‘ydi. Hali yakunlanmagan.', 'Payme поставил возврат в очередь. Он ещё не завершён.', 'Payme queued the refund. It is not complete yet.')}</Alert>}
-            {payment.refund_last_success_at && <Typography variant="body2" color="text.secondary">{l('Payme oxirgi tekshiruvi:', 'Последняя проверка Payme:', 'Last successful Payme check:')} {dateTime(payment.refund_last_success_at)}</Typography>}
+            {payment.refund_last_success_at && <Typography variant="body2" sx={{color:"text.secondary"}}>{l('Payme oxirgi tekshiruvi:', 'Последняя проверка Payme:', 'Last successful Payme check:')} {dateTime(payment.refund_last_success_at)}</Typography>}
             <Typography variant="body2">{l('To‘langan vaqt', 'Время оплаты', 'Paid at')}: {timestamp(payment.payme_perform_time)}</Typography>
             {Number(payment.payme_cancel_time) > 0 && <Typography variant="body2">{l('Bekor qilingan vaqt', 'Время отмены', 'Cancelled at')}: {timestamp(payment.payme_cancel_time)}</Typography>}
           </Stack>

@@ -55,6 +55,7 @@ const primaryItems: NavItem[] = [
   { labelKey: 'nav.customers', path: '/customers', icon: <PeopleAltRounded /> },
   { labelKey: 'nav.subscriptions', path: '/subscriptions', icon: <WorkspacePremiumRounded /> },
   { labelKey: 'nav.warehouse', path: '/warehouse', icon: <Inventory2Rounded /> },
+  { labelKey: 'nav.suppliers', path: '/suppliers', icon: <PeopleAltRounded /> },
   { labelKey: 'nav.delivery', path: '/delivery', icon: <DeliveryDiningRounded /> },
 ];
 
@@ -144,7 +145,7 @@ export default function AdminLayout() {
             }}
           >
             <ListItemIcon sx={{ minWidth: 40, color: active ? '#FD473C' : '#7F878E' }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={t(item.labelKey)} primaryTypographyProps={{ fontSize: 14, fontWeight: active ? 750 : 600 }} />
+            <ListItemText primary={t(item.labelKey)} slotProps={{primary:{ sx: { fontSize: 14, fontWeight: active ? 750 : 600 } }}} />
           </ListItemButton>
         );
       })}
@@ -172,9 +173,9 @@ export default function AdminLayout() {
 
       <Box sx={{ flexGrow: 1 }} />
       <Box sx={{ m: 2, p: 1.6, borderRadius: 3, background: 'rgba(255,255,255,0.045)' }}>
-        <Box display="flex" alignItems="center" gap={1.2}>
+        <Box sx={{display:"flex",alignItems:"center",gap:1.2}}>
           <Avatar sx={{ width: 36, height: 36, bgcolor: '#FD473C', fontSize: 13, fontWeight: 800 }}>{initials}</Avatar>
-          <Box minWidth={0}>
+          <Box sx={{minWidth:0}}>
             <Typography noWrap sx={{ fontSize: 13.5, fontWeight: 750 }}>{admin?.name || t('header.adminRole')}</Typography>
             <Typography noWrap sx={{ fontSize: 11, color: '#818990' }}>{admin?.login_id}</Typography>
           </Box>

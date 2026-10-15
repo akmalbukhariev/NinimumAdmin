@@ -66,8 +66,7 @@ export function PageTitle({ title, subtitle: _subtitle, actionLabel, onAction }:
   >
     <Typography
       variant="h4"
-      fontWeight={850}
-      sx={{
+      sx={{fontWeight:850,
         lineHeight: 1.1,
         fontSize: { xs: 28, sm: 32, md: 34 },
         marginRight: { xs: 0, sm: '32px' },
@@ -101,7 +100,7 @@ export function TablePanel({ children, sx }: { children: ReactNode; sx?: object 
 
 export function LoadState({ loading, error, onRetry, children }: { loading: boolean; error: string | null; onRetry: () => void; children: ReactNode }) {
   const l = useL();
-  if (loading) return <Box py={10} display="grid" sx={{ placeItems: 'center' }}><CircularProgress /></Box>;
+  if (loading) return <Box sx={{py:10,display:"grid", placeItems: 'center' }}><CircularProgress /></Box>;
   if (error) return <Alert severity="error" action={<Button onClick={onRetry}>{l('Qayta urinish','Повторить','Retry')}</Button>}>{error}</Alert>;
   return <>{children}</>;
 }
@@ -154,4 +153,4 @@ export function useConfirm() {
 }
 
 export const money = (value: unknown) => `${new Intl.NumberFormat('uz-UZ').format(Number(value || 0))} so'm`;
-export const dateTime = (value: unknown) => value ? String(value).replace('T',' ').slice(0,19) : '-';
+export { dateTime } from '../utils/dateTime';

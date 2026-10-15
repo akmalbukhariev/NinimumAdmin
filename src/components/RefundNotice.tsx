@@ -10,6 +10,6 @@ export function RefundNotice({ order, compact = false }: { order: Row; compact?:
   const text = overdue
     ? l('Pulni qaytarish 24 soatdan oshdi', 'Возврат ожидается более 24 часов', 'Refund pending over 24 hours')
     : l('Pulni qaytarish kutilmoqda', 'Ожидается возврат', 'Refund pending');
-  if (compact) return <Typography color={overdue ? 'error.main' : 'warning.main'} variant="caption" sx={{ fontWeight: overdue ? 700 : 400 }}>{text}</Typography>;
+  if (compact) return <Typography variant="caption" sx={{color:overdue ? 'error.main' : 'warning.main', fontWeight: overdue ? 700 : 400 }}>{text}</Typography>;
   return <Alert severity={overdue ? 'error' : 'warning'}>{text}{Number.isFinite(since) && <Typography variant="body2">{l('Kutilmoqda:', 'Ожидается с:', 'Pending since:')} {dateTime(order.refund_pending_since)}</Typography>}</Alert>;
 }
