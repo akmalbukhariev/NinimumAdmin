@@ -1,3 +1,4 @@
+import InventoryPage from './pages/InventoryPage';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './auth/ProtectedRoute';
 import AdminLayout from './layout/AdminLayout';
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/delivery" element={<DeliveryPage />} />
           <Route path="/reviews" element={<ReviewsPage />} />
           <Route path="/promotions" element={<PromotionsPage />} />
+          <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/warehouse" element={<WarehousePage />} />
           <Route path="/suppliers" element={<SuppliersPage />} />
           <Route path="/settings" element={<SettingsPage />} />

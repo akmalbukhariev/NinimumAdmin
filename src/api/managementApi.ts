@@ -166,10 +166,19 @@ export const createProduct = async (token:string,data:Row,images:File[]) => {
 export const listFiscalMxik = (token:string, keyword='', pageSize=20, offset=0) => apiRequest<Row[]>('/ninimum/api/v1/admin/product/getFiscalMxikList',{token,method:'POST',showLoading:false,body:JSON.stringify({keyword,pageSize,offset})}).then(r=>r.resultData);
 export const listFiscalPackages = (token:string, keyword='', mxikId?:number) => apiRequest<Row[]>('/ninimum/api/v1/admin/product/getFiscalMxikPackageList',{token,method:'POST',showLoading:false,body:JSON.stringify({keyword,mxikId,pageSize:100,offset:0})}).then(r=>r.resultData);
 
+export const prepareInvoiceImage = async (original:File) => fileToBase64(await optimizeProductImage(original));
+
+export const uploadCategoryImage = async (token:string, original:File) => {
+  const file=await optimizeProductImage(original);
+  const base64=await fileToBase64(file);
+  return apiRequest<Row>(`${m}/categories/image-data`,{token,method:'POST',body:JSON.stringify({base64})}).then(r=>r.resultData.image_url as string);
+};
+
 export const listCategories = (token:string) => apiRequest<Row[]>(`${m}/categories`,{token}).then(r=>r.resultData);
 export const createCategory = (token:string,data:Row) => apiRequest<null>(`${m}/categories`,{token,method:'POST',body:JSON.stringify(data)});
 export const updateCategory = (token:string,id:number,data:Row) => apiRequest<null>(`${m}/categories/${id}`,{token,method:'PUT',body:JSON.stringify(data)});
 
+export const getCustomerCard = (token:string,id:number,section='orders',page=1) => apiRequest<Row>(`${m}/customers/${id}${q({section,page})}`,{token}).then(r=>r.resultData);
 export const listCustomers = (token:string,params:Row={}) => apiRequest<PageData>(`${m}/customers${q(params)}`,{token}).then(r=>r.resultData);
 export const setCustomerActive = (token:string,id:number,active:boolean) => apiRequest<null>(`${m}/customers/${id}/active`,{token,method:'PUT',body:JSON.stringify({active})});
 
@@ -216,3 +225,5 @@ export const imageUrl = (value?: string) => {
 };
 
 export const correctOrderStatus = (token:string,id:number,data:Row) => apiRequest<null>(`${m}/orders/${id}/correction`,{token,method:'POST',body:JSON.stringify(data)});
+
+export const classifyQuestion=(token:string,id:number,kind:string)=>apiRequest<null>(`${m}/questions/${id}/kind`,{token,method:"PUT",body:JSON.stringify({kind})});

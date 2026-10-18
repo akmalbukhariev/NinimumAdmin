@@ -28,6 +28,7 @@ export const translations = {
     'login.platform': 'Ninimum Commerce Platform',
     'login.error.invalid': 'Login yoki parol noto‘g‘ri.',
     'login.error.inactive': 'Admin hisobi faol emas.',
+    'login.error.locked': 'Juda ko‘p noto‘g‘ri urinish. 15 daqiqadan keyin qayta urinib ko‘ring.',
     'login.error.network': 'Backend bilan bog‘lanib bo‘lmadi. Backend ishlayotganini tekshiring.',
     'login.error.generic': 'Kirishda xatolik yuz berdi.',
 
@@ -130,6 +131,7 @@ export const translations = {
     'login.platform': 'Ninimum Commerce Platform',
     'login.error.invalid': 'Неверный логин или пароль.',
     'login.error.inactive': 'Учётная запись администратора неактивна.',
+    'login.error.locked': 'Слишком много неудачных попыток. Попробуйте через 15 минут.',
     'login.error.network': 'Не удалось подключиться к backend. Проверьте, что backend запущен.',
     'login.error.generic': 'Ошибка входа.',
 
@@ -232,6 +234,7 @@ export const translations = {
     'login.platform': 'Ninimum Commerce Platform',
     'login.error.invalid': 'Incorrect login or password.',
     'login.error.inactive': 'This admin account is inactive.',
+    'login.error.locked': 'Too many failed attempts. Try again in 15 minutes.',
     'login.error.network': 'Could not connect to the backend. Make sure the backend is running.',
     'login.error.generic': 'Could not sign in.',
 

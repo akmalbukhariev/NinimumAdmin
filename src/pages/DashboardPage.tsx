@@ -181,12 +181,17 @@ export default function DashboardPage() {
       {data && (
         <>
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' } }}>
-            <StatCard title={t('dashboard.revenue')} value={formatMoney(data.summary.revenue, true)} caption={t('common.allTime')} icon={<AttachMoneyRounded />} accent="#FD473C" />
+            <StatCard title={t('dashboard.revenue')} value={data.summary.revenue==null?'—':formatMoney(data.summary.revenue, true)} caption={language==='uz'?'Faqat yetkazilgan, qaytarilgan qism chiqarilgan':language==='ru'?'Доставленные, за вычетом возвратов':'Delivered only, less returned portion'} icon={<AttachMoneyRounded />} accent="#FD473C" />
             <StatCard title={t('dashboard.orders')} value={formatNumber(data.summary.order_count)} caption={t('common.allTime')} icon={<ReceiptLongOutlined />} accent="#3D7CF4" />
             <StatCard title={t('dashboard.customers')} value={formatNumber(data.summary.customer_count)} caption={t('common.total')} icon={<GroupsRounded />} accent="#7CB518" />
             <StatCard title={t('dashboard.subscriptions')} value={formatNumber(data.summary.subscription_count)} caption={t('common.activeNow')} icon={<WorkspacePremiumOutlined />} accent="#9A62E8" />
           </Box>
 
+          <Box sx={{mt:2,display:'grid',gap:2,gridTemplateColumns:{xs:'1fr',md:'repeat(3,1fr)'}}}>
+            <StatCard title={language==='uz'?'To‘langan, yetkazilmagan':language==='ru'?'Оплачено, не доставлено':'Paid, awaiting delivery'} value={data.summary.paid_undelivered==null?'—':formatMoney(data.summary.paid_undelivered,true)} caption={language==='uz'?'Faol buyurtmalar':language==='ru'?'Активные заказы':'Active orders'} icon={<ReceiptLongOutlined/>} accent="#D58A15"/>
+            <StatCard title={language==='uz'?'Obuna tushumlari':language==='ru'?'Поступления от подписок':'Subscription receipts'} value={data.summary.subscription_receipts==null?'—':formatMoney(data.summary.subscription_receipts,true)} caption={t('common.allTime')} icon={<WorkspacePremiumOutlined/>} accent="#9A62E8"/>
+            <StatCard title={language==='uz'?'7 kunlik yetkazib beruvchi qarzi':language==='ru'?'Поставщикам за 7 дней':'Supplier obligations, next 7 days'} value={data.summary.supplier_due_week==null?'—':formatMoney(data.summary.supplier_due_week,true)} caption={language==='uz'?'Bugun va keyingi 6 kun':language==='ru'?'Сегодня и следующие 6 дней':'Today and the next 6 days'} icon={<AttachMoneyRounded/>} accent="#3975AF"/>
+          </Box>
           <Box sx={{ mt: 2, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', xl: '1.65fr 1fr' } }}>
             <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.6 }, border: '1px solid', borderColor: 'divider' }}>
               <Box sx={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:2}}>

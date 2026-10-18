@@ -50,6 +50,8 @@ export default function LoginPage() {
       if (err instanceof ApiError) {
         if (err.message === 'NETWORK_ERROR') {
           setError(t('login.error.network'));
+        } else if (err.status === 429) {
+          setError(t('login.error.locked'));
         } else if (err.resultCode === '253') {
           setError(t('login.error.inactive'));
         } else if (err.resultCode === '141' || err.resultCode === '255' || err.resultCode === '250') {

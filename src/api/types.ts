@@ -20,7 +20,10 @@ export interface AdminLoginData extends AdminUser {
 }
 
 export interface DashboardSummary {
-  revenue: number;
+  revenue: number | null;
+  paid_undelivered?: number | null;
+  subscription_receipts?: number | null;
+  supplier_due_week?: number | null;
   order_count: number;
   customer_count: number;
   subscription_count: number;

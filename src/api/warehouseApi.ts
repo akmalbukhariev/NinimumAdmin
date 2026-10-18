@@ -13,9 +13,9 @@ export const stock = (token: string, page: number, search: string) => get<PageDa
 export const receipts = (token: string, page: number) => get<PageData>(token, `/receipts?page=${page}&page_size=20`);
 export const receipt = (token: string, id: number) => get<Row>(token, `/receipts/${id}`);
 export const createReceipt = (token: string, body: Row) => post<number>(token, '/receipts', body);
-export const postReceipt = (token: string, id: number) => post<number>(token, `/receipts/${id}/post`);
+export const postReceipt = (token: string, id: number, counts:Row[]) => post<number>(token, `/receipts/${id}/post`,{counts});
 export const reverseReceipt = (token: string, id: number, reason: string) => post<number>(token, `/receipts/${id}/reverse`, {reason});
-export const movements = (token: string, page: number, product: string) => get<PageData>(token, `/movements?page=${page}&page_size=20${product ? `&product_id=${encodeURIComponent(product)}` : ''}`);
+export const movements = (token: string, page: number, product: string, dateFrom = '', dateTo = '') => get<PageData>(token, `/movements?page=${page}&page_size=20${product ? `&product_id=${encodeURIComponent(product)}` : ''}${dateFrom ? `&date_from=${encodeURIComponent(dateFrom)}` : ''}${dateTo ? `&date_to=${encodeURIComponent(dateTo)}` : ''}`);
 export const preparation = (token: string, page: number) => get<PageData>(token, `/preparation?page=${page}&page_size=20`);
 export const preparationItems = (token: string, id: number) => get<Row[]>(token, `/preparation/${id}/items`);
 
@@ -34,3 +34,5 @@ export const saveSupplier = (token: string, id: number | undefined, body: Row) =
 export const recordSupplierPayment = (token: string, id: number, body: Row) => post<number>(token, `/suppliers/${id}/payment-records`, body);
 export const voidSupplierPayment = (token: string, id: number, payment: number, reason: string) => post<unknown>(token, `/suppliers/${id}/payment-records/${payment}/void`, {reason});
 export const supplierCalendar = (token: string, from: string, to: string) => get<Row[]>(token, `/suppliers/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+
+export const updateReceiptMetadata = (token:string,id:number,product:number,body:Row) => apiRequest(`${base}/receipts/${id}/items/${product}/metadata`,{token,method:'PUT',body:JSON.stringify(body)});
