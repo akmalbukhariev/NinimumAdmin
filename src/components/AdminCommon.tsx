@@ -2,6 +2,9 @@ import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Stack, TableContainer, Typography } from '@mui/material';
 import AddRounded from '@mui/icons-material/AddRounded';
 import { useLanguage } from '../i18n/LanguageProvider';
+import { useLocation } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider';
+import { can, pagePermissions } from '../auth/permissions';
 
 export function useL() {
   const { language } = useLanguage();
@@ -61,6 +64,10 @@ export function useEnumLabel() {
 }
 
 export function PageTitle({ title, subtitle: _subtitle, actionLabel, onAction }: { title: string; subtitle?: string; actionLabel?: string; onAction?: () => void }) {
+  // M14: the add/create button needs edit rights on this page's area; view-only staff don't see it.
+  const { admin } = useAuth(), { pathname } = useLocation();
+  const view = pagePermissions[pathname];
+  const editable = !view || can(admin, view.replace(/\.view$/, '.edit'));
   return <Box
     sx={{
       display: 'flex',
@@ -82,7 +89,7 @@ export function PageTitle({ title, subtitle: _subtitle, actionLabel, onAction }:
     >
       {title}
     </Typography>
-    {actionLabel && onAction && <Button variant="contained" startIcon={<AddRounded />} onClick={onAction} sx={{ alignSelf: { xs: 'stretch', sm: 'center' }, minHeight: { xs: 46, sm: 40 } }}>{actionLabel}</Button>}
+    {actionLabel && onAction && editable && <Button variant="contained" startIcon={<AddRounded />} onClick={onAction} sx={{ alignSelf: { xs: 'stretch', sm: 'center' }, minHeight: { xs: 46, sm: 40 } }}>{actionLabel}</Button>}
   </Box>;
 }
 

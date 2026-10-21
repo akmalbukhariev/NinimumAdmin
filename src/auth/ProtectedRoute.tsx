@@ -19,8 +19,8 @@ export default function ProtectedRoute() {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  if (!canAccess(admin?.role, location.pathname)) {
-    return <Navigate to={homePath(admin?.role)} replace />;
+  if (!canAccess(admin, location.pathname)) {
+    return <Navigate to={homePath(admin)} replace />;
   }
   return <Outlet />;
 }

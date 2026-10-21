@@ -32,7 +32,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   if (!isLoading && isAuthenticated) {
-    return <Navigate to={homePath(admin?.role)} replace />;
+    return <Navigate to={homePath(admin)} replace />;
   }
 
   const handleSubmit = async (event: FormEvent) => {

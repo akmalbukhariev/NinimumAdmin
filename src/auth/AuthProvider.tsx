@@ -130,13 +130,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (loginId: string, password: string) => {
     const result = await loginAdmin(loginId, password);
-    const currentAdmin: AdminUser = {
+    let currentAdmin: AdminUser = {
       id: result.id,
       login_id: result.login_id,
       name: result.name,
       role: result.role,
       status: result.status,
     };
+    // M14: the profile carries the staff role and permissions that decide the menu.
+    try { currentAdmin = await getAdminMe(result.access_token); } catch { /* the periodic refresh retries */ }
 
     const session: StoredSession = {
       accessToken: result.access_token,

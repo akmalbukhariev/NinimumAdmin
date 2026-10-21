@@ -38,6 +38,8 @@ import { canAccess } from '../auth/permissions';
 import { useAuth } from '../auth/AuthProvider';
 import { API_ACTIVITY_EVENT } from '../api/client';
 import { ProblemBell } from '../components/OrderProblems';
+import { useL } from '../components/AdminCommon';
+import { staffRoleLabel } from '../components/StaffAccess';
 import LanguageSelector from '../components/LanguageSelector';
 import { useLanguage } from '../i18n/LanguageProvider';
 import type { TranslationKey } from '../i18n/translations';
@@ -73,6 +75,7 @@ export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { admin, logout } = useAuth();
+  const l = useL();
   const { t } = useLanguage();
   const [backendBusy, setBackendBusy] = useState(false);
   const backendBusyHideTimer = useRef<number | null>(null);
@@ -124,7 +127,7 @@ export default function AdminLayout() {
 
   const navList = (items: NavItem[]) => (
     <List disablePadding sx={{ px: 1.5 }}>
-      {items.filter(item => canAccess(admin?.role, item.path)).map((item) => {
+      {items.filter(item => canAccess(admin, item.path)).map((item) => {
         const active = location.pathname === item.path;
         return (
           <ListItemButton
@@ -232,7 +235,7 @@ export default function AdminLayout() {
 
           <Box sx={{ display: { xs: 'none', sm: 'block' }, cursor: 'pointer' }} onClick={handleProfileClick}>
             <Typography sx={{ fontSize: 13.5, fontWeight: 750 }}>{admin?.name || t('header.adminRole')}</Typography>
-            <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>{admin?.role || 'ADMIN'}</Typography>
+            <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>{staffRoleLabel(l, admin?.staff_role, admin?.role)}</Typography>
           </Box>
           <Avatar onClick={handleProfileClick} sx={{ width: { xs: 36, sm: 38 }, height: { xs: 36, sm: 38 }, bgcolor: '#22292F', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{initials}</Avatar>
 

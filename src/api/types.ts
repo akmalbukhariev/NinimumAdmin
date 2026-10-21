@@ -12,6 +12,10 @@ export interface AdminUser {
   name: string;
   role: string;
   status: string;
+  /** M14: DIRECTOR, PURCHASING, OPERATOR, OBSERVER or ADMIN (restricted administrator). */
+  staff_role?: string;
+  /** M14: effective permissions, e.g. "orders.edit", "money.view". Missing on older backends. */
+  permissions?: string[];
 }
 
 export interface AdminLoginData extends AdminUser {

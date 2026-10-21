@@ -29,6 +29,7 @@ import { useNavigate } from 'react-router-dom';
 import { getDashboard } from '../api/adminApi';
 import type { DashboardData, DashboardOrderStatus } from '../api/types';
 import { useAuth } from '../auth/AuthProvider';
+import { can } from '../auth/permissions';
 import { ProblemSummaryCard } from '../components/OrderProblems';
 import StatCard from '../components/StatCard';
 import { dateTime, useEnumLabel } from '../components/AdminCommon';
@@ -65,7 +66,7 @@ function groupStatuses(statuses: DashboardOrderStatus[]) {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { accessToken, logout } = useAuth();
+  const { accessToken, logout, admin } = useAuth();
   const { t, locale, language } = useLanguage();
   const enumLabel = useEnumLabel();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -166,9 +167,9 @@ export default function DashboardPage() {
         >
           {t('dashboard.title')}
         </Typography>
-        <Button variant="contained" startIcon={<AddRounded />} onClick={() => navigate('/products')} sx={{ px: 2.2, py: 1.05, minHeight: { xs: 46, sm: 40 } }}>
+        {can(admin, 'products.edit') && <Button variant="contained" startIcon={<AddRounded />} onClick={() => navigate('/products')} sx={{ px: 2.2, py: 1.05, minHeight: { xs: 46, sm: 40 } }}>
           {t('dashboard.addProduct')}
-        </Button>
+        </Button>}
       </Box>
 
       <ProblemSummaryCard/>
