@@ -180,6 +180,8 @@ export const updateCategory = (token:string,id:number,data:Row) => apiRequest<nu
 
 export const getCustomerCard = (token:string,id:number,section='orders',page=1) => apiRequest<Row>(`${m}/customers/${id}${q({section,page})}`,{token}).then(r=>r.resultData);
 export const listCustomers = (token:string,params:Row={}) => apiRequest<PageData>(`${m}/customers${q(params)}`,{token}).then(r=>r.resultData);
+export const listCustomerDuplicates = (token:string) => apiRequest<Row[]>(`${m}/customers/duplicates`,{token}).then(r=>r.resultData);
+export const mergeCustomers = (token:string,keepId:number,mergeId:number,reason:string) => apiRequest<Row>(`${m}/customers/${keepId}/merge`,{token,method:'POST',body:JSON.stringify({merge_user_id:mergeId,reason})}).then(r=>r.resultData);
 export const setCustomerActive = (token:string,id:number,active:boolean) => apiRequest<null>(`${m}/customers/${id}/active`,{token,method:'PUT',body:JSON.stringify({active})});
 
 export const listSubscriptions = (token:string,params:Row={}) => apiRequest<PageData>(`${m}/subscriptions${q(params)}`,{token}).then(r=>r.resultData);

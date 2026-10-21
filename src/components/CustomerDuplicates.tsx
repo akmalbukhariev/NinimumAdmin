@@ -1,0 +1,33 @@
+import {useCallback,useEffect,useState} from 'react';
+import {Alert,Button,CircularProgress,Dialog,DialogActions,DialogContent,DialogTitle,Stack,Table,TableBody,TableCell,TableHead,TableRow,TextField,Typography} from '@mui/material';
+import {useL,dateTime,StatusChip,TablePanel} from './AdminCommon';
+import {listCustomerDuplicates,mergeCustomers,type Row} from '../api/managementApi';
+
+// M11: one person with two accounts (the same phone in different forms). The owner keeps one and merges the other into it.
+export function CustomerDuplicates({token,onClose,onMerged}:{token:string;onClose:()=>void;onMerged:()=>void}) {
+ const l=useL();
+ const [groups,setGroups]=useState<Row[]|null>(null),[loadError,setLoadError]=useState(false),[draft,setDraft]=useState<{keep:Row;merge:Row;reason:string}|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null),[done,setDone]=useState<string|null>(null);
+ const load=useCallback(()=>{setLoadError(false);setGroups(null);listCustomerDuplicates(token).then(setGroups).catch(()=>setLoadError(true));},[token]);
+ useEffect(()=>{load()},[load]);
+ const name=(r:Row)=>[r.first_name,r.last_name].filter(Boolean).join(' ')||`№${r.id}`;
+ const message=(code:string)=>({
+  CUSTOMER_MERGE_PHONE_MISMATCH:l('Bu hisoblarning telefon raqami bir xil emas.','У этих аккаунтов разные номера телефонов.','These accounts do not have the same phone number.'),
+  CUSTOMER_MERGE_REASON_REQUIRED:l('Sababni yozing (500 belgigacha).','Укажите причину (до 500 символов).','Enter a reason (up to 500 characters).'),
+  WAREHOUSE_NOT_FOUND:l('Hisob topilmadi yoki allaqachon birlashtirilgan. Ro‘yxatni yangilang.','Аккаунт не найден или уже объединён. Обновите список.','Account not found or already merged. Refresh the list.'),
+ } as Record<string,string>)[code]||l('Birlashtirib bo‘lmadi. Qayta urinib ko‘ring.','Не удалось объединить. Попробуйте ещё раз.','Could not merge. Please try again.');
+ const submit=async()=>{if(!draft||busy)return;setBusy(true);setError(null);try{await mergeCustomers(token,Number(draft.keep.id),Number(draft.merge.id),draft.reason.trim());setDone(l(`№${draft.merge.id} hisobi №${draft.keep.id} ga birlashtirildi.`,`Аккаунт №${draft.merge.id} объединён с №${draft.keep.id}.`,`Account №${draft.merge.id} was merged into №${draft.keep.id}.`));setDraft(null);onMerged();load();}catch(e){setError(message(e instanceof Error?e.message:''));}finally{setBusy(false);}};
+ return <Dialog open onClose={onClose} fullWidth maxWidth="lg"><DialogTitle>{l('Takroriy mijozlar','Дубликаты клиентов','Duplicate customers')}</DialogTitle><DialogContent>
+  <Alert severity="info" sx={{mb:2}}>{l('Bir xil telefon raqami turli shaklda yozilgan hisoblar. Qoldiriladigan hisobni tanlang: ikkinchisining buyurtmalari, to‘lovlari, obunalari, manzillari va savatchasi unga o‘tadi, ikkinchi hisob yopiladi.','Аккаунты с одним номером телефона, записанным по-разному. Выберите аккаунт, который останется: заказы, оплаты, подписки, адреса и корзина второго перейдут к нему, а второй аккаунт будет закрыт.','Accounts with the same phone number written in different forms. Choose the account to keep: the other account’s orders, payments, subscriptions, addresses and cart move to it, and the other account is closed.')}</Alert>
+  {done&&<Alert severity="success" sx={{mb:2}} onClose={()=>setDone(null)}>{done}</Alert>}
+  {loadError&&<Alert severity="error" action={<Button onClick={load}>{l('Qayta urinish','Повторить','Retry')}</Button>}>{l('Ma’lumotlarni yuklab bo‘lmadi.','Не удалось загрузить данные.','Could not load details.')}</Alert>}
+  {groups===null&&!loadError&&<CircularProgress size={24}/>}
+  {groups?.length===0&&<Typography>{l('Takroriy hisoblar yo‘q.','Дубликатов нет.','No duplicate accounts.')}</Typography>}
+  <Stack spacing={2}>{groups?.map(g=><TablePanel key={g.phone}><Typography variant="subtitle1" sx={{p:2,pb:0}}>{g.phone}</Typography><Table size="small"><TableHead><TableRow><TableCell>{l('Mijoz','Клиент','Customer')}</TableCell><TableCell>{l('Saqlangan raqam','Сохранённый номер','Stored number')}</TableCell><TableCell>{l('Buyurtmalar','Заказы','Orders')}</TableCell><TableCell>{l('Ro‘yxatdan o‘tgan','Регистрация','Registered')}</TableCell><TableCell>{l('Holat','Статус','Status')}</TableCell><TableCell/></TableRow></TableHead><TableBody>{(g.accounts as Row[]).map(a=><TableRow key={a.id}><TableCell>{name(a)} (№{a.id})</TableCell><TableCell>{a.phone_number}</TableCell><TableCell>{a.order_count}</TableCell><TableCell>{dateTime(a.created_at)}</TableCell><TableCell><StatusChip value={a.status}/></TableCell><TableCell><Stack direction="row" spacing={1}>{(g.accounts as Row[]).filter(o=>o.id!==a.id).map(o=><Button key={o.id} size="small" onClick={()=>{setError(null);setDraft({keep:a,merge:o,reason:''});}}>{l(`Shuni qoldirish, №${o.id} ni qo‘shish`,`Оставить, присоединить №${o.id}`,`Keep, merge №${o.id} in`)}</Button>)}</Stack></TableCell></TableRow>)}</TableBody></Table></TablePanel>)}</Stack>
+ </DialogContent><DialogActions><Button onClick={load}>{l('Yangilash','Обновить','Refresh')}</Button><Button onClick={onClose}>{l('Yopish','Закрыть','Close')}</Button></DialogActions>
+ <Dialog open={!!draft} onClose={()=>{if(!busy)setDraft(null)}} fullWidth maxWidth="sm"><DialogTitle>{l('Hisoblarni birlashtirish','Объединить аккаунты','Merge accounts')}</DialogTitle><DialogContent><Stack spacing={2} sx={{pt:1}}>
+  {draft&&<Alert severity="warning">{l(`№${draft.keep.id} (${name(draft.keep)}) qoladi. №${draft.merge.id} (${name(draft.merge)}) dagi hamma narsa unga o‘tadi va №${draft.merge.id} yopiladi. Bu amalni ilovadan qaytarib bo‘lmaydi.`,`Останется №${draft.keep.id} (${name(draft.keep)}). Всё из №${draft.merge.id} (${name(draft.merge)}) перейдёт к нему, а №${draft.merge.id} будет закрыт. Это нельзя отменить в приложении.`,`№${draft.keep.id} (${name(draft.keep)}) stays. Everything from №${draft.merge.id} (${name(draft.merge)}) moves to it, and №${draft.merge.id} is closed. This can’t be undone in the app.`)}</Alert>}
+  {error&&<Alert severity="error">{error}</Alert>}
+  <TextField required multiline disabled={busy} label={l('Sabab','Причина','Reason')} value={draft?.reason||''} slotProps={{htmlInput:{maxLength:500}}} onChange={e=>setDraft(v=>v?{...v,reason:e.target.value}:null)}/>
+ </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={()=>setDraft(null)}>{l('Bekor qilish','Отмена','Cancel')}</Button><Button variant="contained" color="error" disabled={busy||!draft?.reason.trim()} onClick={()=>void submit()}>{l('Birlashtirish','Объединить','Merge')}</Button></DialogActions></Dialog>
+ </Dialog>;
+}
