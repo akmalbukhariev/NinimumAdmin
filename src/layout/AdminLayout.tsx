@@ -9,6 +9,8 @@ import {
   MenuRounded,
   NotificationsNoneRounded,
   PeopleAltRounded,
+  AccountBalanceWalletRounded,
+  AssessmentRounded,
   RateReviewRounded,
   ReceiptLongRounded,
   SettingsRounded,
@@ -58,6 +60,8 @@ const primaryItems: NavItem[] = [
   { labelKey: 'nav.subscriptions', path: '/subscriptions', icon: <WorkspacePremiumRounded /> },
   { labelKey: 'nav.warehouse', path: '/warehouse', icon: <Inventory2Rounded /> },
   { labelKey: 'nav.suppliers', path: '/suppliers', icon: <PeopleAltRounded /> },
+  { labelKey: 'nav.finance', path: '/finance', icon: <AccountBalanceWalletRounded /> },
+  { labelKey: 'nav.reports', path: '/reports', icon: <AssessmentRounded /> },
   { labelKey: 'nav.delivery', path: '/delivery', icon: <DeliveryDiningRounded /> },
 ];
 

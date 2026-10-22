@@ -46,6 +46,7 @@ export function StaffAccessDialog({token,admin,overview,onClose,onSaved}:{token:
     <Typography variant="subtitle2">{l('Qo‘shimcha','Дополнительно','Extra')}</Typography>
     <FormControlLabel control={<Checkbox disabled={busy} checked={has('money.view')} onChange={()=>toggle('money.view')}/>} label={l('Pul ko‘rsatkichlari va tannarx','Денежные показатели и себестоимость','Money figures and costs')}/>
     <FormControlLabel control={<Checkbox disabled={busy} checked={has('approve')} onChange={()=>toggle('approve')}/>} label={l('Hujjatlarni tasdiqlash (kirim, sanash, spisaniya)','Проведение документов (приход, пересчёт, списание)','Approve documents (receipts, counts, write-offs)')}/>
+    <FormControlLabel control={<Checkbox disabled={busy} checked={has('money.edit')} onChange={()=>toggle('money.edit')}/>} label={l('Pul bo‘limida hujjat kiritish (xarajat, kirim, o‘tkazma)','Документы в разделе «Деньги» (расход, поступление, перевод)','Enter money documents (expense, income, transfer)')}/>
     <FormControlLabel control={<Checkbox disabled={busy} checked={has('prices.edit')} onChange={()=>toggle('prices.edit')}/>} label={l('Narxlarni o‘zgartirish','Изменение цен','Change prices')}/>
   </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={onClose}>{l('Bekor qilish','Отмена','Cancel')}</Button><Button variant="contained" disabled={busy} onClick={()=>void save()}>{l('Saqlash','Сохранить','Save')}</Button></DialogActions></Dialog>;
 }

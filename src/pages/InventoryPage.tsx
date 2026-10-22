@@ -30,6 +30,7 @@ export default function InventoryPage(){
   INVENTORY_LEGACY_ORDERS_ACTIVE:['Bu mahsulot faol buyurtmalarda bor. Buyurtmalar yakunlangach qayta urinib ko‘ring.','Товар есть в активных заказах. Повторите после их завершения.','The product is in active orders. Try again after they finish.'],
   INVENTORY_BIN_LOCKED:['Bu manzil hozir sanalmoqda.','Эта ячейка сейчас пересчитывается.','This bin is being counted.'],
   INVENTORY_BIN_MISMATCH:['Manzil kodi mos emas.','Код ячейки не совпадает.','The bin code does not match.'],
+  PERIOD_CLOSED:['Bu sana yopilgan davrga tushadi (Sozlamalar → Qoidalar → Davr yopish).','Эта дата в закрытом периоде (Настройки → Правила → Закрытие периода).','This date is in a closed period (Settings → Rules → Period closing).'],
   INVENTORY_BIN_EMPTY:['Bu manzilda partiya qoldig‘i yo‘q. Boshqa manzilni tanlang.','В этой ячейке нет остатков партий. Выберите другую ячейку.','This bin has no batch stock. Choose another bin.'],
   INVENTORY_RESERVED_STOCK:['Manzildagi mahsulot buyurtma uchun band.','Товар в ячейке зарезервирован под заказ.','Stock in this bin is reserved for an order.'],
   INVENTORY_PHOTO_REQUIRED:['Rasm qo‘shing.','Добавьте фото.','Add a photo.'],

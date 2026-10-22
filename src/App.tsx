@@ -7,6 +7,8 @@ import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import WarehousePage from './pages/WarehousePage';
 import SuppliersPage from './pages/SuppliersPage';
+import FinancePage from './pages/FinancePage';
+import ReportsPage from './pages/ReportsPage';
 import { CategoriesPage, CustomersPage, DeliveryPage, OrdersPage, ProductsPage, PromotionsPage, ReviewsPage, SettingsPage, SubscriptionsPage } from './pages/ManagementPages';
 
 export default function App() {
@@ -29,6 +31,8 @@ export default function App() {
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/warehouse" element={<WarehousePage />} />
           <Route path="/suppliers" element={<SuppliersPage />} />
+          <Route path="/finance" element={<FinancePage />} />
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

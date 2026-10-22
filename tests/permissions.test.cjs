@@ -14,3 +14,7 @@ test('staff pages follow permissions; edit includes view; settings stay owner-on
  assert.equal(homePath(purchasing),'/warehouse');assert.equal(can(purchasing,'warehouse.view'),true);assert.equal(can(purchasing,'money.view'),false);
  assert.equal(canAccess({role:'WAREHOUSE',permissions:['orders.view']},'/orders'),false);
 });
+test('reports page opens with any report permission',()=>{
+ assert.equal(canAccess({role:'ADMIN',permissions:['orders.view']},'/reports'),true);assert.equal(canAccess({role:'ADMIN',permissions:['subscriptions.edit']},'/reports'),true);
+ assert.equal(canAccess({role:'ADMIN',permissions:['reviews.view','products.edit']},'/reports'),false);assert.equal(canAccess({role:'ADMIN'},'/reports'),false);
+});

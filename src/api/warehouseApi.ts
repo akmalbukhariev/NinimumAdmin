@@ -11,6 +11,8 @@ export const locations = (token: string) => get<Row[]>(token, '/locations');
 export const createLocation = (token: string, body: Row) => post<number>(token, '/locations', body);
 export const stock = (token: string, page: number, search: string) => get<PageData>(token, `/stock?page=${page}&page_size=20&search=${encodeURIComponent(search)}`);
 export const receipts = (token: string, page: number) => get<PageData>(token, `/receipts?page=${page}&page_size=20`);
+// Q-4: last posted purchase price per piece, the % limit and whether a note is required for this user.
+export const previousCosts = (token: string, ids: number[]) => get<Row>(token, `/receipts/previous-costs?product_ids=${ids.join(',')}`);
 export const receipt = (token: string, id: number) => get<Row>(token, `/receipts/${id}`);
 export const createReceipt = (token: string, body: Row) => post<number>(token, '/receipts', body);
 export const postReceipt = (token: string, id: number, counts:Row[]) => post<number>(token, `/receipts/${id}/post`,{counts});
@@ -31,6 +33,8 @@ export const supplierDetail = (token: string, id: number) => get<Row>(token, `/s
 export const saveSupplier = (token: string, id: number | undefined, body: Row) => id
   ? apiRequest(`${base}/suppliers/${id}`, {token, method:'PUT', body:JSON.stringify(body)}).then(r=>r.resultData)
   : post<number>(token, '/suppliers', body);
+// Money places for "paid from" (names only).
+export const moneyPlaces = (token: string) => get<Row[]>(token, '/suppliers/money-places');
 export const recordSupplierPayment = (token: string, id: number, body: Row) => post<number>(token, `/suppliers/${id}/payment-records`, body);
 export const voidSupplierPayment = (token: string, id: number, payment: number, reason: string) => post<unknown>(token, `/suppliers/${id}/payment-records/${payment}/void`, {reason});
 export const supplierCalendar = (token: string, from: string, to: string) => get<Row[]>(token, `/suppliers/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
