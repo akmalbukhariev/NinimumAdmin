@@ -6,7 +6,7 @@ import type { Row } from '../api/managementApi';
 import { money, StatusChip, useL, dateTime } from './AdminCommon';
 import { RefundNotice } from './RefundNotice';
 
-async function copyText(value: string) {
+export async function copyText(value: string) {
   if (navigator.clipboard && window.isSecureContext) {
     await navigator.clipboard.writeText(value);
     return;

@@ -9,6 +9,7 @@ import WarehousePage from './pages/WarehousePage';
 import SuppliersPage from './pages/SuppliersPage';
 import FinancePage from './pages/FinancePage';
 import ReportsPage from './pages/ReportsPage';
+import RefundsPage from './pages/RefundsPage';
 import { CategoriesPage, CustomersPage, DeliveryPage, OrdersPage, ProductsPage, PromotionsPage, ReviewsPage, SettingsPage, SubscriptionsPage } from './pages/ManagementPages';
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
         <Route element={<AdminLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/problems" element={<OrderProblemsPage />} />
+          <Route path="/refunds" element={<RefundsPage />} />
           <Route path="/order-timers" element={<TimerSettingsPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/products" element={<ProductsPage />} />

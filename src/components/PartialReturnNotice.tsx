@@ -10,6 +10,7 @@ export default function PartialReturnNotice({ value }: { value?: Row | null }) {
     <Typography>{value.status==='RECEIVED'?l('Qaytgan tovarlar omborga qabul qilindi.','Возвращённые товары приняты складом.','Returned goods received by warehouse.'):l('Qaytgan tovarlar ombor qabulini kutmoqda.','Возвращённые товары ожидают приёмки складом.','Returned goods await warehouse receipt.')}</Typography>
     {value.items?.map((item:Row)=><Typography key={item.product_id}>{item.product_name} × {item.quantity} · {money(item.refund_amount)}</Typography>)}
     <Typography sx={{fontWeight:700}}>{l('Qaytarilishi kerak bo‘lgan summa','Сумма к возврату','Amount owed')}: {money(value.refund_amount)}</Typography>
+    {value.refund_status==='MANUAL_REFUND'&&<Typography>{l('Pul qaytarildi va «Qaytarish kerak» sahifasida yozildi.','Деньги возвращены и записаны на странице «Нужно вернуть».','The refund was paid and recorded on the Refunds owed page.')}</Typography>}
     {value.refund_status==='FULL_PAYMENT_REFUND'&&<Typography>{l('Payme to‘liq to‘lov qaytarilganini tasdiqladi.','Payme подтвердил возврат полного платежа.','Payme confirmed the whole payment was refunded.')}</Typography>}
     <Typography>{l('Yetkazish haqi o‘zgarmaydi. Bu yozuv pulni qaytarmaydi.','Стоимость доставки не меняется. Эта запись не выполняет возврат денег.','Delivery fee is retained. This record does not execute a refund.')}</Typography>
   </Stack></Alert>;

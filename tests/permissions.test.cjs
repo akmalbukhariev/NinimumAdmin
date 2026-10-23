@@ -18,3 +18,6 @@ test('reports page opens with any report permission',()=>{
  assert.equal(canAccess({role:'ADMIN',permissions:['orders.view']},'/reports'),true);assert.equal(canAccess({role:'ADMIN',permissions:['subscriptions.edit']},'/reports'),true);
  assert.equal(canAccess({role:'ADMIN',permissions:['reviews.view','products.edit']},'/reports'),false);assert.equal(canAccess({role:'ADMIN'},'/reports'),false);
 });
+test('refunds page follows problem orders',()=>{
+ assert.equal(canAccess({role:'ADMIN',permissions:['problems.view']},'/refunds'),true);assert.equal(canAccess({role:'ADMIN',permissions:['orders.view']},'/refunds'),false);
+});

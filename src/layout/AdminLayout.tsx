@@ -11,6 +11,7 @@ import {
   PeopleAltRounded,
   AccountBalanceWalletRounded,
   AssessmentRounded,
+  CurrencyExchangeRounded,
   RateReviewRounded,
   ReceiptLongRounded,
   SettingsRounded,
@@ -53,6 +54,7 @@ type NavItem = { labelKey: TranslationKey; path: string; icon: ReactNode };
 const primaryItems: NavItem[] = [
   { labelKey: 'nav.dashboard', path: '/dashboard', icon: <DashboardRounded /> },
   { labelKey: 'nav.problems', path: '/problems', icon: <NotificationsNoneRounded /> },
+  { labelKey: 'nav.refunds', path: '/refunds', icon: <CurrencyExchangeRounded /> },
   { labelKey: 'nav.orders', path: '/orders', icon: <ReceiptLongRounded /> },
   { labelKey: 'nav.products', path: '/products', icon: <Inventory2Rounded /> },
   { labelKey: 'nav.categories', path: '/categories', icon: <CategoryRounded /> },
