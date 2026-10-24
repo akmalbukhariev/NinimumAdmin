@@ -51,7 +51,7 @@ export default function RefundsPage() {
     {notice && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setNotice(null)}>{notice}</Alert>}
     <LoadState loading={!data && !error} error={data ? null : error} onRetry={() => void load()}>
       <Typography variant="h6" sx={{ mb: 1 }}>{l('Qaytarilishi kerak', 'Нужно вернуть', 'Still owed')} ({data?.pending.length ?? 0})</Typography>
-      <TablePanel sx={{ mb: 3, overflowX: 'auto' }}><Table size="small">
+      <TablePanel sx={{ mb: 3 }}><Table size="small">
         <TableHead><TableRow><TableCell>{l('Buyurtma', 'Заказ', 'Order')}</TableCell><TableCell>{l('Mijoz', 'Клиент', 'Customer')}</TableCell><TableCell>{l('Turi', 'Тип', 'Type')}</TableCell><TableCell align="right">{l('Summa', 'Сумма', 'Amount')}</TableCell>
           <TableCell>{l('Sabab', 'Причина', 'Reason')}</TableCell><TableCell>{l('Qachondan', 'С какого времени', 'Since')}</TableCell><TableCell>Payme ID</TableCell><TableCell /></TableRow></TableHead>
         <TableBody>
@@ -68,7 +68,7 @@ export default function RefundsPage() {
           </TableRow>; })}
         </TableBody></Table></TablePanel>
       <Typography variant="h6" sx={{ mb: 1 }}>{l('Qaytarilganlar (oxirgi 60 kun)', 'Возвращено (последние 60 дней)', 'Refunded (last 60 days)')}</Typography>
-      <TablePanel sx={{ overflowX: 'auto' }}><Table size="small">
+      <TablePanel><Table size="small">
         <TableHead><TableRow><TableCell>{l('Buyurtma', 'Заказ', 'Order')}</TableCell><TableCell>{l('Mijoz', 'Клиент', 'Customer')}</TableCell><TableCell>{l('Turi', 'Тип', 'Type')}</TableCell><TableCell align="right">{l('Summa', 'Сумма', 'Amount')}</TableCell>
           <TableCell>{l('Qayerdan', 'Откуда', 'Paid from')}</TableCell><TableCell>{l('Sana', 'Дата', 'Date')}</TableCell><TableCell>{l('Izoh', 'Комментарий', 'Note')}</TableCell><TableCell>{l('Kim', 'Кто', 'By')}</TableCell></TableRow></TableHead>
         <TableBody>

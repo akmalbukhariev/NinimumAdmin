@@ -1,5 +1,6 @@
 import {useState} from 'react';
-import {Alert,Button,Checkbox,Dialog,DialogActions,DialogContent,DialogTitle,FormControlLabel,MenuItem,Stack,Table,TableBody,TableCell,TableHead,TableRow,TextField,Typography} from '@mui/material';
+import { errorText } from '../api/errorText';
+import {Alert,Button,Checkbox,Dialog,DialogActions,DialogContent,DialogTitle,FormControlLabel,MenuItem,Radio,Stack,Table,TableBody,TableCell,TableHead,TableRow,TextField,Typography} from '@mui/material';
 import {useL} from './AdminCommon';
 import {apiRequest} from '../api/client';
 import type {Row} from '../api/managementApi';
@@ -15,7 +16,7 @@ export const staffRoleLabel=(l:L,role?:string,authority?:string)=>authority==='S
   OPERATOR:l('Operator','Оператор','Operator'),OBSERVER:l('Kuzatuvchi','Наблюдатель','Observer'),
 } as Record<string,string>)[role||'']||l('Administrator (cheklangan)','Администратор (ограниченный)','Administrator (restricted)');
 const areaLabel=(l:L,area:string)=>({
-  dashboard:l('Bosh sahifa','Главная','Dashboard'),problems:l('Muammoli buyurtmalar','Проблемные заказы','Problem orders'),orders:l('Buyurtmalar','Заказы','Orders'),
+  dashboard:l('Bosh sahifa','Главная','Dashboard'),problems:l('Muammolar','Проблемы','Problems'),orders:l('Buyurtmalar','Заказы','Orders'),
   customers:l('Mijozlar','Клиенты','Customers'),products:l('Mahsulotlar','Товары','Products'),categories:l('Kategoriyalar','Категории','Categories'),
   subscriptions:l('Obunalar','Подписки','Subscriptions'),promotions:l('Aksiyalar','Акции','Promotions'),reviews:l('Sharhlar va savollar','Отзывы и вопросы','Reviews and questions'),
   delivery:l('Yetkazib berish','Доставка','Delivery'),warehouse:l('Ombor','Склад','Warehouse'),suppliers:l('Yetkazib beruvchilar','Поставщики','Suppliers'),
@@ -32,8 +33,12 @@ export function StaffAccessDialog({token,admin,overview,onClose,onSaved}:{token:
   const pickRole=(next:string)=>{setRole(next);setPerms(withViews(overview.roles[next]||[]));};
   // An area is off, view-only or editable; edit always includes view.
   const setArea=(area:string,level:'none'|'view'|'edit')=>setPerms(current=>{const rest=current.filter(p=>p!==`${area}.view`&&p!==`${area}.edit`);return level==='none'?rest:level==='view'?[...rest,`${area}.view`]:[...rest,`${area}.view`,`${area}.edit`];});
-  const toggle=(p:string)=>setPerms(current=>current.includes(p)?current.filter(x=>x!==p):[...current,p]);
-  const save=async()=>{setBusy(true);setError(null);try{await saveStaffAccess(token,Number(admin.id),role,perms);onSaved();onClose();}catch(e){setError(e instanceof Error?e.message:'Error');}finally{setBusy(false);}};
+  // Extras are independent checkboxes; "money.edit" needs "money.view", and dropping view drops edit.
+  const toggle=(p:string)=>setPerms(current=>{
+    if(current.includes(p))return current.filter(x=>x!==p&&!(p==='money.view'&&x==='money.edit'));
+    return p==='money.edit'&&!current.includes('money.view')?[...current,'money.view',p]:[...current,p];
+  });
+  const save=async()=>{setBusy(true);setError(null);try{await saveStaffAccess(token,Number(admin.id),role,perms);onSaved();onClose();}catch(e){setError(errorText(e,l));}finally{setBusy(false);}};
   return <Dialog open onClose={()=>{if(!busy)onClose()}} fullWidth maxWidth="md"><DialogTitle>{l('Ruxsatlar','Права доступа','Permissions')}: {admin.name||admin.login_id}</DialogTitle><DialogContent><Stack spacing={2} sx={{pt:1}}>
     {error&&<Alert severity="error">{error}</Alert>}
     <TextField select label={l('Rol','Роль','Role')} value={role} disabled={busy} onChange={e=>pickRole(e.target.value)} helperText={l('Rolni tanlasangiz, ruxsatlar shu rolning standart to‘plamiga qaytadi. Keyin har birini alohida o‘zgartirish mumkin.','При выборе роли права сбрасываются к её стандартному набору; затем их можно менять по одному.','Choosing a role resets the permissions to its defaults; you can then change each one.')}>
@@ -41,9 +46,10 @@ export function StaffAccessDialog({token,admin,overview,onClose,onSaved}:{token:
     </TextField>
     <Table size="small"><TableHead><TableRow><TableCell>{l('Bo‘lim','Раздел','Area')}</TableCell><TableCell align="center">{l('Yo‘q','Нет','None')}</TableCell><TableCell align="center">{l('Ko‘rish','Просмотр','View')}</TableCell><TableCell align="center">{l('O‘zgartirish','Изменение','Edit')}</TableCell></TableRow></TableHead><TableBody>
       {areas.map(area=>{const level=has(`${area}.edit`)?'edit':has(`${area}.view`)?'view':'none';return <TableRow key={area}><TableCell>{areaLabel(l,area)}</TableCell>
-        {(['none','view','edit'] as const).map(v=><TableCell key={v} align="center"><Checkbox disabled={busy} checked={level===v} onChange={()=>setArea(area,v)} slotProps={{input:{'aria-label':`${area} ${v}`}}}/></TableCell>)}</TableRow>;})}
+        {(['none','view','edit'] as const).map(v=><TableCell key={v} align="center"><Radio disabled={busy} checked={level===v} name={`area-${area}`} value={v} onChange={()=>setArea(area,v)} slotProps={{input:{'aria-label':`${area} ${v}`}}}/></TableCell>)}</TableRow>;})}
     </TableBody></Table>
-    <Typography variant="subtitle2">{l('Qo‘shimcha','Дополнительно','Extra')}</Typography>
+    <Typography variant="body2" sx={{color:'text.secondary'}}>{l('Har bir bo‘lim uchun bittasini tanlang: yo‘q, ko‘rish yoki o‘zgartirish (o‘zgartirish ko‘rishni ham beradi).','Для каждого раздела выберите один вариант: нет, просмотр или изменение (изменение включает просмотр).','Pick one per area: none, view or edit (edit includes view).')}</Typography>
+    <Typography variant="subtitle2">{l('Qo‘shimcha (bir nechtasini tanlash mumkin)','Дополнительно (можно выбрать несколько)','Extra (choose any)')}</Typography>
     <FormControlLabel control={<Checkbox disabled={busy} checked={has('money.view')} onChange={()=>toggle('money.view')}/>} label={l('Pul ko‘rsatkichlari va tannarx','Денежные показатели и себестоимость','Money figures and costs')}/>
     <FormControlLabel control={<Checkbox disabled={busy} checked={has('approve')} onChange={()=>toggle('approve')}/>} label={l('Hujjatlarni tasdiqlash (kirim, sanash, spisaniya)','Проведение документов (приход, пересчёт, списание)','Approve documents (receipts, counts, write-offs)')}/>
     <FormControlLabel control={<Checkbox disabled={busy} checked={has('money.edit')} onChange={()=>toggle('money.edit')}/>} label={l('Pul bo‘limida hujjat kiritish (xarajat, kirim, o‘tkazma)','Документы в разделе «Деньги» (расход, поступление, перевод)','Enter money documents (expense, income, transfer)')}/>

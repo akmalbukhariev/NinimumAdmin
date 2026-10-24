@@ -28,7 +28,7 @@ const REPORTS: Report[] = [
   { code: 'expiry', title: ['7. Muddatlar', '7. Сроки годности', '7. Expiry dates'], filters: ['days', 'product', 'location'], days: 30 },
   { code: 'counts', title: ['8. Sanash natijalari', '8. Результаты пересчётов', '8. Count results'], filters: ['period', 'location', 'product'] },
   { code: 'order-flow', title: ['9. Buyurtma oqimi', '9. Поток заказов', '9. Order flow'], filters: ['period', 'group'], groups: [['status', ['Holat bo‘yicha', 'По статусам', 'By status']], ['packer', ['Yig‘uvchi bo‘yicha', 'По сборщикам', 'By packer']]] },
-  { code: 'problems', title: ['10. Muammoli buyurtmalar va pul nazorati', '10. Проблемные заказы и контроль денег', '10. Problem orders and money control'], filters: [] },
+  { code: 'problems', title: ['10. Muammolar va pul nazorati', '10. Проблемы и контроль денег', '10. Problems and money control'], filters: [] },
   { code: 'reasons', title: ['11. Bekor va qaytarish sabablari', '11. Причины отмен и возвратов', '11. Cancellation and return reasons'], filters: ['period'] },
   { code: 'couriers', title: ['12. Kuryerlar', '12. Курьеры', '12. Couriers'], filters: ['period', 'courier'] },
   { code: 'sales', title: ['13. Sotuv va yalpi foyda', '13. Продажи и валовая прибыль', '13. Sales and gross profit'], filters: ['period', 'group', 'product', 'category'], groups: [['product', ['Tovar bo‘yicha', 'По товарам', 'By product']], ['category', ['Kategoriya bo‘yicha', 'По категориям', 'By category']], ['day', ['Kun bo‘yicha', 'По дням', 'By day']]], note: ['Yetkazilgan buyurtmalar, qisman qaytarilganlar ayirilgan. Tannarx: sotuv paytidagi tannarx, bo‘lmasa mahsulot tannarxi.', 'Доставленные заказы за вычетом частичных возвратов. Себестоимость: на момент продажи, иначе себестоимость товара.', 'Delivered orders less partial returns. Cost: at the time of sale, else the product cost price.'] },
@@ -196,12 +196,12 @@ export default function ReportsPage() {
         {presets.filter(p => available?.includes(String(p.code))).map(p => <Chip key={String(p.name)} label={String(p.name)} onClick={() => { setCode(String(p.code)); setF(p.filters as Record<string, string>); }} onDelete={() => removePreset(String(p.name))} />)}
       </Stack>
     </Stack></Panel>
-    {result && <TablePanel><Box sx={{ overflowX: 'auto' }}><Table size="small">
+    {result && <TablePanel><Table size="small">
       <TableHead><TableRow>{result.columns.map(c => <TableCell key={c.key} align={['number', 'money', 'percent'].includes(c.type) ? 'right' : 'left'}>{title(c)}</TableCell>)}</TableRow></TableHead>
       <TableBody>
         {result.rows.length === 0 && <TableRow><TableCell colSpan={result.columns.length}>{l('Ma’lumot yo‘q', 'Нет данных', 'No data')}</TableCell></TableRow>}
         {result.rows.map((r, i) => <TableRow key={i}>{result.columns.map(c => <TableCell key={c.key} align={['number', 'money', 'percent'].includes(c.type) ? 'right' : 'left'}>{cell(c, r[c.key])}</TableCell>)}</TableRow>)}
         {totals && Object.keys(totals).length > 0 && result.rows.length > 0 && <TableRow>{result.columns.map((c, i) => <TableCell key={c.key} align={['number', 'money', 'percent'].includes(c.type) ? 'right' : 'left'} sx={{ fontWeight: 700 }}>{i === 0 ? l('Jami', 'Итого', 'Total') : c.sum ? cell(c, totals[c.key]) : ''}</TableCell>)}</TableRow>}
-      </TableBody></Table></Box></TablePanel>}
+      </TableBody></Table></TablePanel>}
   </>;
 }

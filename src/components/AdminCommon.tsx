@@ -97,18 +97,31 @@ export function Panel({ children, sx }: { children: ReactNode; sx?: object }) {
   return <Paper variant="outlined" sx={{ borderRadius: { xs: 2.5, sm: 3 }, overflow: 'hidden', ...sx }}>{children}</Paper>;
 }
 
-export function TablePanel({ children, sx }: { children: ReactNode; sx?: object }) {
-  return <Panel sx={{ mt: { xs: 2, sm: 2.5 }, ...sx }}>
+/** The scrolling area of a table: scrolls both ways, the header row stays on top. */
+export function TableScroll({ children }: { children: ReactNode }) {
+  return <>
+    {/* Only the table scrolls (both ways); the header row stays on top so every column keeps its name. */}
     <TableContainer
       className="admin-table-scroll"
       sx={{
-        overflowX: 'auto',
+        overflow: 'auto',
+        maxHeight: { xs: '70vh', md: 'calc(100vh - 240px)' },
+        overscrollBehavior: 'contain',
         WebkitOverflowScrolling: 'touch',
-        '& table': { minWidth: { xs: 720, md: '100%' } },
+        scrollBehavior: 'smooth',
+        '& table': { minWidth: { xs: 720, md: '100%' }, borderCollapse: 'separate', borderSpacing: 0 },
+        '& thead th': { position: 'sticky', top: 0, zIndex: 2, bgcolor: 'background.paper', boxShadow: 'inset 0 -1px 0 rgba(0,0,0,0.12)' },
+        '& tbody tr:hover td': { bgcolor: 'action.hover' },
       }}
     >
       {children}
     </TableContainer>
+  </>;
+}
+
+export function TablePanel({ children, sx }: { children: ReactNode; sx?: object }) {
+  return <Panel sx={{ mt: { xs: 2, sm: 2.5 }, ...sx }}>
+    <TableScroll>{children}</TableScroll>
   </Panel>;
 }
 

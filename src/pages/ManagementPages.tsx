@@ -1,4 +1,5 @@
 import {CourierDispatchSettings} from '../components/CourierDispatchSettings';
+import { errorText } from '../api/errorText';
 import {LoginAudit} from '../components/LoginAudit';
 import { ProductPriceHistory } from '../components/ProductPriceHistory';
 import { TariffBenefits } from '../components/TariffBenefits';
@@ -45,7 +46,7 @@ function usePaged(loader:(page:number,pageSize:number)=>Promise<api.PageData>) {
     if(previousLoader.current!==loader){previousLoader.current=loader;if(page!==0){setPage(0);return;}}
     setLoading(true);setError(null);
     try{const result=await loader(page+1,pageSize);if(request===generation.current)setData(result);}
-    catch(e){if(request===generation.current)setError(e instanceof Error?e.message:'Error');}
+    catch(e){if(request===generation.current)setError(errorText(e,l));}
     finally{if(request===generation.current)setLoading(false);}
   },[loader,page,pageSize]);
   useEffect(()=>{void reload();return()=>{generation.current++;}},[reload]);
@@ -117,14 +118,14 @@ export function OrdersPage(){
     const ok=await confirm({message:l('Holatni orqaga qaytarish tayyorlashni qayta boshlashi yoki kuryer biriktirilishini olib tashlashi mumkin. Davom etasizmi?','Возврат статуса может перезапустить подготовку или снять назначение курьера. Продолжить?','Moving back may restart preparation or remove the courier assignment. Continue?')});if(!ok)return;
     setCorrectionBusy(true);setCorrectionError(null);
     try {await api.correctOrderStatus(token,correction.id,{status:correction.status,expected_status:correction.original_status,reason:correction.reason});setCorrection(null);await x.reload();await openDetail(correction.id);}
-    catch(e){setCorrectionError(e instanceof Error?e.message:l('Amal bajarilmadi.','Действие не выполнено.','Action failed.'));}
+    catch(e){setCorrectionError(errorText(e,l,l('Amal bajarilmadi.','Действие не выполнено.','Action failed.')));}
     finally{setCorrectionBusy(false);}
   };
 
   const openDetail=async(id:number)=>{
     const request=++detailRequest.current; setDetailId(id);setDetail(null);setDetailLoading(true);setDetailError(null);
     try {const result=await api.getOrder(token,id);if(request===detailRequest.current)setDetail(result);}
-    catch(error){if(request===detailRequest.current)setDetailError(error instanceof Error?error.message:l('Ma’lumotlarni yuklab bo‘lmadi.','Не удалось загрузить данные.','Could not load details.'));}
+    catch(error){if(request===detailRequest.current)setDetailError(errorText(error,l,l('Ma’lumotlarni yuklab bo‘lmadi.','Не удалось загрузить данные.','Could not load details.')));}
     finally {if(request===detailRequest.current)setDetailLoading(false);}
   };
   useEffect(()=>{const id=Number(query.get('order'));if(Number.isSafeInteger(id)&&id>0)void openDetail(id);},[query,token]);
@@ -267,7 +268,7 @@ export function ProductsPage() {
       setMxikHasMore(rows.length === MXIK_PAGE_SIZE);
     } catch (error) {
       if (version === mxikRequestVersion.current) {
-        setActionError(error instanceof Error ? error.message : 'Error');
+        setActionError(errorText(error,l));
       }
     } finally {
       if (append) {
@@ -319,7 +320,7 @@ export function ProductsPage() {
     try {
       setCreatePackages(await api.listFiscalPackages(token, '', Number(mxik.mxik_id)));
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Error');
+      setActionError(errorText(error,l));
     } finally {
       setCreatePackagesLoading(false);
     }
@@ -342,7 +343,7 @@ export function ProductsPage() {
     try {
       setEditPackages(await api.listFiscalPackages(token, '', Number(mxik.mxik_id)));
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Error');
+      setActionError(errorText(error,l));
     } finally {
       setEditPackagesLoading(false);
     }
@@ -402,7 +403,7 @@ export function ProductsPage() {
         setEditPackages([]);
       }
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Error');
+      setActionError(errorText(error,l));
     }
   };
 
@@ -490,7 +491,7 @@ export function ProductsPage() {
           ? l('Narx o‘zgargan. "Narx o‘zgarishi sababi" maydonini to‘ldiring.','Цена изменена. Заполните поле «Причина изменения цены».','The price changed. Fill in "Reason for price change".')
           : message === 'ADMIN_PERMISSION_DENIED'
             ? l('Narxni o‘zgartirishga ruxsatingiz yo‘q.','У вас нет права менять цены.','You are not allowed to change prices.')
-            : message);
+            : errorText(error, l));
     } finally {
       setEditSaving(false);
     }
@@ -565,7 +566,7 @@ export function ProductsPage() {
           'The processed image is still above the server limit. Please try another image.',
         ));
       } else {
-        setCreateError(message || l('Mahsulotni saqlashda xatolik yuz berdi.', 'Произошла ошибка при сохранении товара.', 'An error occurred while saving the product.'));
+        setCreateError(errorText(error, l, l('Mahsulotni saqlashda xatolik yuz berdi.', 'Произошла ошибка при сохранении товара.', 'An error occurred while saving the product.')));
       }
     } finally {
       setCreateSaving(false);
@@ -592,7 +593,7 @@ export function ProductsPage() {
       if (filteredOut) x.removeItem(productId);
       else x.updateItem(productId, (current) => ({ ...current, is_active: nextActive }));
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : l('Holatni yangilab bo‘lmadi.', 'Не удалось обновить статус.', 'Could not update status.'));
+      setActionError(errorText(error,l,l('Holatni yangilab bo‘lmadi.', 'Не удалось обновить статус.', 'Could not update status.')));
     } finally {
       setProductActionId(null);
     }
@@ -626,7 +627,7 @@ export function ProductsPage() {
           'This product is already used by orders, banners, carts, reviews, or other data. Make it inactive instead of deleting it.',
         ));
       } else {
-        setActionError(message || l('Mahsulotni o‘chirib bo‘lmadi.', 'Не удалось удалить товар.', 'Could not delete the product.'));
+        setActionError(errorText(error, l, l('Mahsulotni o‘chirib bo‘lmadi.', 'Не удалось удалить товар.', 'Could not delete the product.')));
       }
     } finally {
       setProductActionId(null);
@@ -878,14 +879,13 @@ export function ProductsPage() {
 
 export function CategoriesPage(){
   const token=useToken(),l=useL(); const {confirm,confirmDialog}=useConfirm(); const [rows,setRows]=useState<Row[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null),[edit,setEdit]=useState<Row|null>(null);
-  const load=useCallback(async()=>{setLoading(true);try{setRows(await api.listCategories(token));setError(null);}catch(e){setError(e instanceof Error?e.message:'Error')}finally{setLoading(false)}},[token]); useEffect(()=>{void load()},[load]);
+  const load=useCallback(async()=>{setLoading(true);try{setRows(await api.listCategories(token));setError(null);}catch(e){setError(errorText(e,l))}finally{setLoading(false)}},[token]); useEffect(()=>{void load()},[load]);
   const [saveError,setSaveError]=useState<string|null>(null);
   const [saving,setSaving]=useState(false),[imageUploading,setImageUploading]=useState(false);
   const savingRef=useRef(false);
   const uploadImage=async(file:File)=>{setImageUploading(true);setSaveError(null);try{const image_url=await api.uploadCategoryImage(token,file);setEdit(v=>v&&({...v,image_url}));}catch{setSaveError(l('Rasm yuklanmadi. Boshqa JPG yoki PNG fayl tanlang.','Изображение не загружено. Выберите другой JPG или PNG.','Image upload failed. Select another JPG or PNG.'));}finally{setImageUploading(false)}};
-  const eligibleParents=rows.filter(candidate=>{const seen=new Set<number>();let current:Row|undefined=candidate;while(current){if(Number(current.id)===Number(edit?.id)||seen.has(Number(current.id)))return false;seen.add(Number(current.id));current=rows.find(r=>Number(r.id)===Number(current?.parent_id));}return true;});
-  const startNew=()=>setEdit({id:0,name:'',name_uz:'',name_ru:'',parent_id:null,image_url:'',sort_order:0,is_active:true}); const save=async()=>{if(!edit||savingRef.current||imageUploading)return;setSaveError(null);if(!String(edit.name||'').trim()){setSaveError(l('Kategoriya nomini kiriting.','Введите название категории.','Enter a category name.'));return;}savingRef.current=true;setSaving(true);try{if(edit.id&&!edit.is_active){const ok=await confirm({danger:true,message:l('Ushbu kategoriyani faol emas holatda saqlashga ishonchingiz komilmi?','Вы уверены, что хотите сохранить эту категорию неактивной?','Are you sure you want to save this category as inactive?')});if(!ok)return;}if(edit.id)await api.updateCategory(token,edit.id,edit);else await api.createCategory(token,edit);setEdit(null);await load();}catch{setSaveError(l('Kategoriyani saqlab bo‘lmadi. Asosiy kategoriyani tekshiring va qayta urinib ko‘ring.','Не удалось сохранить категорию. Проверьте родительскую категорию и повторите попытку.','Could not save the category. Check names, image URL and parent category, then retry.'));}finally{savingRef.current=false;setSaving(false)}};
-  return <><PageTitle title={l('Kategoriyalar','Категории','Categories')} subtitle={l('Kategoriya va tartibni boshqaring.','Управляйте категориями и порядком.','Manage categories and ordering.')} actionLabel={l('Kategoriya qo‘shish','Добавить категорию','Add category')} onAction={()=>{setSaveError(null);startNew()}}/><LoadState loading={loading} error={error} onRetry={load}><TablePanel><Table><TableHead><TableRow><TableCell>ID</TableCell><TableCell>{l('Nomi','Название','Name')}</TableCell><TableCell>{l('Tartib','Порядок','Order')}</TableCell><TableCell>{l('Holat','Статус','Status')}</TableCell><TableCell/></TableRow></TableHead><TableBody>{rows.map(r=><TableRow key={r.id}><TableCell>{r.id}</TableCell><TableCell>{r.name}</TableCell><TableCell>{r.sort_order}</TableCell><TableCell><StatusChip value={r.is_active?'ACTIVE':'INACTIVE'}/></TableCell><TableCell><IconButton onClick={()=>{setSaveError(null);setEdit({...r})}}><EditRounded/></IconButton></TableCell></TableRow>)}</TableBody></Table></TablePanel></LoadState><Dialog open={!!edit} onClose={()=>{if(!saving&&!imageUploading)setEdit(null)}} fullWidth maxWidth="xs"><DialogTitle>{edit?.id?l('Tahrirlash','Редактировать','Edit'):l('Yangi kategoriya','Новая категория','New category')}</DialogTitle><DialogContent sx={{pt:'20px!important'}}><Stack spacing={3}>{saveError&&<Alert severity="error">{saveError}</Alert>}<TextField label={l('Nomi','Название','Name')} value={edit?.name||''} onChange={e=>setEdit(v=>v&&({...v,name:e.target.value}))}/><TextField label={l('Nomi (O‘zbekcha)','Название (узбекский)','Name (Uzbek)')} value={edit?.name_uz||''} helperText={l('Bo‘sh bo‘lsa asosiy nom ko‘rsatiladi.','Если пусто, используется основное название.','Uses the default name when empty.')} onChange={e=>setEdit(v=>v&&({...v,name_uz:e.target.value}))}/><TextField label={l('Nomi (Ruscha)','Название (русский)','Name (Russian)')} value={edit?.name_ru||''} onChange={e=>setEdit(v=>v&&({...v,name_ru:e.target.value}))}/><TextField label={l('Rasm URL','URL изображения','Image URL')} value={edit?.image_url||''} onChange={e=>setEdit(v=>v&&({...v,image_url:e.target.value}))}/>{edit?.image_url&&<Box component="img" src={api.imageUrl(edit.image_url)} alt="" sx={{width:100,height:100,objectFit:'contain'}}/>}<Button component="label" disabled={saving||imageUploading}>{imageUploading?l('Yuklanmoqda…','Загрузка…','Uploading…'):l('Rasm tanlash','Выбрать изображение','Choose image')}<input hidden type="file" accept="image/jpeg,image/png" onChange={e=>{const file=e.target.files?.[0];if(file)void uploadImage(file);e.target.value=''}}/></Button><Button disabled={saving||imageUploading||!edit?.image_url} onClick={()=>setEdit(v=>v&&({...v,image_url:''}))}>{l('Rasmni olib tashlash','Убрать изображение','Remove image')}</Button>{!!edit?.id&&<TextField select label={l('Asosiy kategoriya','Родительская категория','Parent category')} value={edit?.parent_id||''} onChange={e=>setEdit(v=>v&&({...v,parent_id:e.target.value?Number(e.target.value):null}))}><MenuItem value="">-</MenuItem>{eligibleParents.map(r=><MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>)}</TextField>}<TextField type="number" label={l('Tartib','Порядок','Order')} value={edit?.sort_order??0} onChange={e=>setEdit(v=>v&&({...v,sort_order:Number(e.target.value)}))}/><FormControlLabel control={<Checkbox checked={Boolean(edit?.is_active)} onChange={e=>setEdit(v=>v&&({...v,is_active:e.target.checked}))}/>} label={l('Faol','Активна','Active')}/></Stack></DialogContent><DialogActions><Button disabled={saving||imageUploading} onClick={()=>setEdit(null)}>{l('Bekor qilish','Отмена','Cancel')}</Button><Button disabled={saving||imageUploading} variant="contained" onClick={()=>void save()}>{l('Saqlash','Сохранить','Save')}</Button></DialogActions></Dialog>{confirmDialog}</>;
+  const startNew=()=>setEdit({id:0,name:'',name_uz:'',name_ru:'',parent_id:null,image_url:'',sort_order:0,is_active:true}); const save=async()=>{if(!edit||savingRef.current||imageUploading)return;setSaveError(null);if(!String(edit.name||'').trim()){setSaveError(l('Kategoriya nomini kiriting.','Введите название категории.','Enter a category name.'));return;}savingRef.current=true;setSaving(true);try{if(edit.id&&!edit.is_active){const ok=await confirm({danger:true,message:l('Ushbu kategoriyani faol emas holatda saqlashga ishonchingiz komilmi?','Вы уверены, что хотите сохранить эту категорию неактивной?','Are you sure you want to save this category as inactive?')});if(!ok)return;}if(edit.id)await api.updateCategory(token,edit.id,(({parent_id:_parent,...rest})=>rest)(edit));else await api.createCategory(token,edit);setEdit(null);await load();}catch{setSaveError(l('Kategoriyani saqlab bo‘lmadi. Nomini va rasmini tekshiring va qayta urinib ko‘ring.','Не удалось сохранить категорию. Проверьте название и изображение и повторите попытку.','Could not save the category. Check the name and image, then retry.'));}finally{savingRef.current=false;setSaving(false)}};
+  return <><PageTitle title={l('Kategoriyalar','Категории','Categories')} subtitle={l('Kategoriya va tartibni boshqaring.','Управляйте категориями и порядком.','Manage categories and ordering.')} actionLabel={l('Kategoriya qo‘shish','Добавить категорию','Add category')} onAction={()=>{setSaveError(null);startNew()}}/><LoadState loading={loading} error={error} onRetry={load}><TablePanel><Table><TableHead><TableRow><TableCell>ID</TableCell><TableCell>{l('Nomi','Название','Name')}</TableCell><TableCell>{l('Tartib','Порядок','Order')}</TableCell><TableCell>{l('Holat','Статус','Status')}</TableCell><TableCell/></TableRow></TableHead><TableBody>{rows.map(r=><TableRow key={r.id}><TableCell>{r.id}</TableCell><TableCell>{r.name}</TableCell><TableCell>{r.sort_order}</TableCell><TableCell><StatusChip value={r.is_active?'ACTIVE':'INACTIVE'}/></TableCell><TableCell><IconButton onClick={()=>{setSaveError(null);setEdit({...r})}}><EditRounded/></IconButton></TableCell></TableRow>)}</TableBody></Table></TablePanel></LoadState><Dialog open={!!edit} onClose={()=>{if(!saving&&!imageUploading)setEdit(null)}} fullWidth maxWidth="xs"><DialogTitle>{edit?.id?l('Tahrirlash','Редактировать','Edit'):l('Yangi kategoriya','Новая категория','New category')}</DialogTitle><DialogContent sx={{pt:'20px!important'}}><Stack spacing={3}>{saveError&&<Alert severity="error">{saveError}</Alert>}<TextField label={l('Nomi','Название','Name')} value={edit?.name||''} onChange={e=>setEdit(v=>v&&({...v,name:e.target.value}))}/><TextField label={l('Nomi (O‘zbekcha)','Название (узбекский)','Name (Uzbek)')} value={edit?.name_uz||''} helperText={l('Bo‘sh bo‘lsa asosiy nom ko‘rsatiladi.','Если пусто, используется основное название.','Uses the default name when empty.')} onChange={e=>setEdit(v=>v&&({...v,name_uz:e.target.value}))}/><TextField label={l('Nomi (Ruscha)','Название (русский)','Name (Russian)')} value={edit?.name_ru||''} onChange={e=>setEdit(v=>v&&({...v,name_ru:e.target.value}))}/><TextField label={l('Rasm URL','URL изображения','Image URL')} value={edit?.image_url||''} onChange={e=>setEdit(v=>v&&({...v,image_url:e.target.value}))}/>{edit?.image_url&&<Box component="img" src={api.imageUrl(edit.image_url)} alt="" sx={{width:100,height:100,objectFit:'contain'}}/>}<Button component="label" disabled={saving||imageUploading}>{imageUploading?l('Yuklanmoqda…','Загрузка…','Uploading…'):l('Rasm tanlash','Выбрать изображение','Choose image')}<input hidden type="file" accept="image/jpeg,image/png" onChange={e=>{const file=e.target.files?.[0];if(file)void uploadImage(file);e.target.value=''}}/></Button><Button disabled={saving||imageUploading||!edit?.image_url} onClick={()=>setEdit(v=>v&&({...v,image_url:''}))}>{l('Rasmni olib tashlash','Убрать изображение','Remove image')}</Button><TextField type="number" label={l('Tartib','Порядок','Order')} value={edit?.sort_order??0} onChange={e=>setEdit(v=>v&&({...v,sort_order:Number(e.target.value)}))}/><FormControlLabel control={<Checkbox checked={Boolean(edit?.is_active)} onChange={e=>setEdit(v=>v&&({...v,is_active:e.target.checked}))}/>} label={l('Faol','Активна','Active')}/></Stack></DialogContent><DialogActions><Button disabled={saving||imageUploading} onClick={()=>setEdit(null)}>{l('Bekor qilish','Отмена','Cancel')}</Button><Button disabled={saving||imageUploading} variant="contained" onClick={()=>void save()}>{l('Saqlash','Сохранить','Save')}</Button></DialogActions></Dialog>{confirmDialog}</>;
 }
 
 export function CustomersPage(){
@@ -903,11 +903,11 @@ export function SubscriptionsPage(){
   const x=usePaged(loader);
   const [benefitTariff,setBenefitTariff]=useState<number|null>(null);
   const [tariffs,setTariffs]=useState<Row[]>([]), [editTariff,setEditTariff]=useState<Row|null>(null), [error,setError]=useState<string|null>(null);
-  const loadTariffs=useCallback(async()=>{try{setTariffs(await api.listTariffs(token));setError(null);}catch(e){setError(e instanceof Error?e.message:'Error');}},[token]);
+  const loadTariffs=useCallback(async()=>{try{setTariffs(await api.listTariffs(token));setError(null);}catch(e){setError(errorText(e,l));}},[token]);
   useEffect(()=>{void loadTariffs()},[loadTariffs]);
-  const subStatus=async(r:Row,s:string)=>{const ok=await confirm({danger:['CANCELLED','EXPIRED'].includes(s),message:l(`Obuna holatini ${enumLabel(s)} holatiga o‘zgartirishga ishonchingiz komilmi?`,`Вы уверены, что хотите изменить статус подписки на «${enumLabel(s)}»?`,`Are you sure you want to change the subscription status to ${enumLabel(s)}?`)});if(!ok)return;try{await api.setSubscriptionStatus(token,r.id,s);await x.reload();}catch(e){setError(e instanceof Error?e.message:'Error')}};
+  const subStatus=async(r:Row,s:string)=>{const ok=await confirm({danger:['CANCELLED','EXPIRED'].includes(s),message:l(`Obuna holatini ${enumLabel(s)} holatiga o‘zgartirishga ishonchingiz komilmi?`,`Вы уверены, что хотите изменить статус подписки на «${enumLabel(s)}»?`,`Are you sure you want to change the subscription status to ${enumLabel(s)}?`)});if(!ok)return;try{await api.setSubscriptionStatus(token,r.id,s);await x.reload();}catch(e){setError(errorText(e,l))}};
   const blankTariff=()=>({id:0,name:'',monthly_price:'',duration_months:1,description:'',is_active:true});
-  const saveTariff=async()=>{if(!editTariff)return;if(editTariff.id&&!editTariff.is_active){const ok=await confirm({danger:true,message:l('Ushbu tarifni faol emas holatda saqlashga ishonchingiz komilmi?','Вы уверены, что хотите сохранить этот тариф неактивным?','Are you sure you want to save this tariff as inactive?')});if(!ok)return;}try{if(editTariff.id)await api.updateTariff(token,editTariff.id,editTariff);else await api.createTariff(token,editTariff);setEditTariff(null);await loadTariffs();}catch(e){setError(e instanceof Error?e.message:'Error')}};
+  const saveTariff=async()=>{if(!editTariff)return;if(editTariff.id&&!editTariff.is_active){const ok=await confirm({danger:true,message:l('Ushbu tarifni faol emas holatda saqlashga ishonchingiz komilmi?','Вы уверены, что хотите сохранить этот тариф неактивным?','Are you sure you want to save this tariff as inactive?')});if(!ok)return;}try{if(editTariff.id)await api.updateTariff(token,editTariff.id,editTariff);else await api.createTariff(token,editTariff);setEditTariff(null);await loadTariffs();}catch(e){setError(errorText(e,l))}};
   return <>
     <PageTitle title={l('Obunalar','Подписки','Subscriptions')} subtitle={l('Mijoz obunalari va tariflarni boshqaring.','Управляйте подписками и тарифами.','Manage subscriptions and tariff plans.')} actionLabel={tab===1?l('Tarif qo‘shish','Добавить тариф','Add tariff'):undefined} onAction={tab===1?()=>setEditTariff(blankTariff()):undefined}/>
     {error&&<Alert severity="error" sx={{mb:2}} onClose={()=>setError(null)}>{error}</Alert>}
@@ -932,15 +932,15 @@ export function DeliveryPage(){
   const [workerForm,setWorkerForm]=useState({workerId:'',fullName:'',phoneNumber:'',password:'',vehicleType:'',vehicleNumber:''});
   const loader=useCallback((p:number,s:number)=>api.listDeliveryJobs(token,{page:p,page_size:s,status}),[token,status]);
   const x=usePaged(loader);const[workers,setWorkers]=useState<Row[]>([]);
-  const loadWorkers=useCallback(async()=>{try{setWorkers(await api.listDeliveryWorkers(token));setError(null);}catch(e){setError(e instanceof Error?e.message:'Error')}},[token]);useEffect(()=>{void loadWorkers()},[loadWorkers]);
+  const loadWorkers=useCallback(async()=>{try{setWorkers(await api.listDeliveryWorkers(token));setError(null);}catch(e){setError(errorText(e,l))}},[token]);useEffect(()=>{void loadWorkers()},[loadWorkers]);
   const [returnDraft,setReturnDraft]=useState<{job:Row;reason:string;photo:string}|null>(null),[returnBusy,setReturnBusy]=useState(false),[returnError,setReturnError]=useState<string|null>(null);
   const photoError=(code:string)=>code==='RETURN_PHOTO_TOO_LARGE'?l('Rasm 10 MB dan oshmasin.','Фото должно быть не больше 10 МБ.','Photo must be no larger than 10 MB.'):code==='RETURN_PHOTO_REQUIRED'?l('Qaytarish rasmini qo‘shing.','Добавьте фото возврата.','Add a return photo.'):l('JPEG yoki PNG rasmini tanlang.','Выберите фото JPEG или PNG.','Choose a JPEG or PNG photo.');
   const chooseReturnPhoto=async(file:File)=>{setReturnError(null);setReturnBusy(true);try{const photo=await readReturnPhoto(file);setReturnDraft(v=>v?{...v,photo}:null);}catch(e){setReturnError(photoError(e instanceof Error?e.message:''));}finally{setReturnBusy(false);}};
-  const submitReturn=async()=>{if(!returnDraft||!returnDraft.reason||!returnDraft.photo||returnBusy)return;setReturnBusy(true);setReturnError(null);try{await api.updateDeliveryJob(token,returnDraft.job.id,{status:'FAILED',note:returnDraft.reason,photo_base64:returnDraft.photo});setReturnDraft(null);await x.reload();}catch(e){const message=e instanceof Error?e.message:'Error';setReturnError(message.startsWith('RETURN_PHOTO_')?photoError(message):message);}finally{setReturnBusy(false);}};
-  const updateJob=async(r:Row,data:Row)=>{if(data.status==='FAILED'){setReturnError(null);setReturnDraft({job:r,reason:'',photo:''});return;}const nextStatus=data.status?enumLabel(data.status):null;const ok=await confirm({danger:['FAILED','CANCELLED'].includes(String(data.status||'')),message:nextStatus?l(`Yetkazma ma’lumotini o‘zgartirib, holatini ${nextStatus} qilishga ishonchingiz komilmi?`,`Вы уверены, что хотите изменить доставку и установить статус «${nextStatus}»?`,`Are you sure you want to update the delivery and set its status to ${nextStatus}?`):l('Yetkazmaga biriktirilgan kuryerni o‘zgartirishga ishonchingiz komilmi?','Вы уверены, что хотите изменить назначенного курьера?','Are you sure you want to change the assigned courier?')});if(!ok)return;try{await api.updateDeliveryJob(token,r.id,data);await x.reload()}catch(e){setError(e instanceof Error?e.message:'Error')}};
-  const workerStatus=async(r:Row)=>{const disabling=r.status==='ACTIVE';const ok=await confirm({danger:disabling,message:disabling?l('Ushbu kuryerni nofaol qilishga ishonchingiz komilmi?','Вы уверены, что хотите сделать этого курьера неактивным?','Are you sure you want to make this courier inactive?'):l('Ushbu kuryerni faollashtirishga ishonchingiz komilmi?','Вы уверены, что хотите активировать этого курьера?','Are you sure you want to enable this courier?')});if(!ok)return;try{await api.setDeliveryWorkerStatus(token,r.id,disabling?'INACTIVE':'ACTIVE');await loadWorkers()}catch(e){setError(e instanceof Error?e.message:'Error')}};
-  const deleteWorker=async(r:Row)=>{const ok=await confirm({danger:true,message:l(`${r.full_name||r.worker_code} kuryerini butunlay o‘chirishga ishonchingiz komilmi? Bu amalni qaytarib bo‘lmaydi.`,`Вы уверены, что хотите навсегда удалить курьера ${r.full_name||r.worker_code}? Это действие нельзя отменить.`,`Are you sure you want to permanently delete courier ${r.full_name||r.worker_code}? This action cannot be undone.`)});if(!ok)return;try{await api.deleteDeliveryWorker(token,r.id);setWorkers(current=>current.filter(w=>Number(w.id)!==Number(r.id)));setError(null)}catch(e){const message=e instanceof Error?e.message:'Error';setError(message==='COURIER_IS_IN_USE'?l('Bu kuryer yetkazib berish tarixida ishlatilgan. Tarixni saqlash uchun uni butunlay o‘chirib bo‘lmaydi. Uni Nofaol holatda qoldiring.','Этот курьер уже используется в истории доставок. Для сохранения истории его нельзя удалить полностью. Оставьте его неактивным.','This courier is already used in delivery history and cannot be permanently deleted. Keep the courier inactive instead.'):message)}};
-  const createWorker=async()=>{try{await api.createDeliveryWorker(token,workerForm);setNewWorker(false);setWorkerForm({workerId:'',fullName:'',phoneNumber:'',password:'',vehicleType:'',vehicleNumber:''});await loadWorkers()}catch(e){setError(e instanceof Error?e.message:'Error')}};
+  const submitReturn=async()=>{if(!returnDraft||!returnDraft.reason||!returnDraft.photo||returnBusy)return;setReturnBusy(true);setReturnError(null);try{await api.updateDeliveryJob(token,returnDraft.job.id,{status:'FAILED',note:returnDraft.reason,photo_base64:returnDraft.photo});setReturnDraft(null);await x.reload();}catch(e){const message=e instanceof Error?e.message:'Error';setReturnError(message.startsWith('RETURN_PHOTO_')?photoError(message):errorText(e,l));}finally{setReturnBusy(false);}};
+  const updateJob=async(r:Row,data:Row)=>{if(data.status==='FAILED'){setReturnError(null);setReturnDraft({job:r,reason:'',photo:''});return;}const nextStatus=data.status?enumLabel(data.status):null;const ok=await confirm({danger:['FAILED','CANCELLED'].includes(String(data.status||'')),message:nextStatus?l(`Yetkazma ma’lumotini o‘zgartirib, holatini ${nextStatus} qilishga ishonchingiz komilmi?`,`Вы уверены, что хотите изменить доставку и установить статус «${nextStatus}»?`,`Are you sure you want to update the delivery and set its status to ${nextStatus}?`):l('Yetkazmaga biriktirilgan kuryerni o‘zgartirishga ishonchingiz komilmi?','Вы уверены, что хотите изменить назначенного курьера?','Are you sure you want to change the assigned courier?')});if(!ok)return;try{await api.updateDeliveryJob(token,r.id,data);await x.reload()}catch(e){setError(errorText(e,l))}};
+  const workerStatus=async(r:Row)=>{const disabling=r.status==='ACTIVE';const ok=await confirm({danger:disabling,message:disabling?l('Ushbu kuryerni nofaol qilishga ishonchingiz komilmi?','Вы уверены, что хотите сделать этого курьера неактивным?','Are you sure you want to make this courier inactive?'):l('Ushbu kuryerni faollashtirishga ishonchingiz komilmi?','Вы уверены, что хотите активировать этого курьера?','Are you sure you want to enable this courier?')});if(!ok)return;try{await api.setDeliveryWorkerStatus(token,r.id,disabling?'INACTIVE':'ACTIVE');await loadWorkers()}catch(e){setError(errorText(e,l))}};
+  const deleteWorker=async(r:Row)=>{const ok=await confirm({danger:true,message:l(`${r.full_name||r.worker_code} kuryerini butunlay o‘chirishga ishonchingiz komilmi? Bu amalni qaytarib bo‘lmaydi.`,`Вы уверены, что хотите навсегда удалить курьера ${r.full_name||r.worker_code}? Это действие нельзя отменить.`,`Are you sure you want to permanently delete courier ${r.full_name||r.worker_code}? This action cannot be undone.`)});if(!ok)return;try{await api.deleteDeliveryWorker(token,r.id);setWorkers(current=>current.filter(w=>Number(w.id)!==Number(r.id)));setError(null)}catch(e){const message=e instanceof Error?e.message:'Error';setError(message==='COURIER_IS_IN_USE'?l('Bu kuryer yetkazib berish tarixida ishlatilgan. Tarixni saqlash uchun uni butunlay o‘chirib bo‘lmaydi. Uni Nofaol holatda qoldiring.','Этот курьер уже используется в истории доставок. Для сохранения истории его нельзя удалить полностью. Оставьте его неактивным.','This courier is already used in delivery history and cannot be permanently deleted. Keep the courier inactive instead.'):errorText(e,l))}};
+  const createWorker=async()=>{try{await api.createDeliveryWorker(token,workerForm);setNewWorker(false);setWorkerForm({workerId:'',fullName:'',phoneNumber:'',password:'',vehicleType:'',vehicleNumber:''});await loadWorkers()}catch(e){setError(errorText(e,l))}};
   return <>
     <PageTitle title={l('Yetkazib berish','Доставка','Delivery')} subtitle={l('Kuryerlar va yetkazma ishlarini boshqaring.','Управляйте курьерами и доставками.','Manage couriers and delivery jobs.')} actionLabel={tab===1?l('Kuryer qo‘shish','Добавить курьера','Add courier'):undefined} onAction={tab===1?()=>setNewWorker(true):undefined}/>
     {error&&<Alert severity="error" sx={{mb:2}} onClose={()=>setError(null)}>{error}</Alert>}
@@ -976,10 +976,10 @@ export function ReviewsPage(){
   const reviewLoader=useCallback((p:number,s:number)=>api.listReviews(token,{page:p,page_size:s,search,active:active===''?undefined:active==='true'}),[token,search,active]);
   const questionLoader=useCallback((p:number,s:number)=>api.listQuestions(token,{page:p,page_size:s,search,status:questionStatus,kind}),[token,search,questionStatus,kind]);
   const reviews=usePaged(reviewLoader), questions=usePaged(questionLoader);
-  const toggleReview=async(r:Row)=>{const hiding=Boolean(r.is_active);const ok=await confirm({danger:hiding,message:hiding?l('Ushbu sharhni yashirishga ishonchingiz komilmi?','Вы уверены, что хотите скрыть этот отзыв?','Are you sure you want to hide this review?'):l('Ushbu sharhni qayta ko‘rsatishga ishonchingiz komilmi?','Вы уверены, что хотите снова показать этот отзыв?','Are you sure you want to show this review again?')});if(!ok)return;try{await api.setReviewActive(token,r.id,!r.is_active);await reviews.reload()}catch(e){setError(e instanceof Error?e.message:'Error')}};
-  const toggleQuestion=async(r:Row)=>{const hiding=Boolean(r.is_active);const ok=await confirm({danger:hiding,message:hiding?l('Ushbu savolni yashirishga ishonchingiz komilmi?','Вы уверены, что хотите скрыть этот вопрос?','Are you sure you want to hide this question?'):l('Ushbu savolni qayta ko‘rsatishga ishonchingiz komilmi?','Вы уверены, что хотите снова показать этот вопрос?','Are you sure you want to show this question again?')});if(!ok)return;try{await api.setQuestionActive(token,r.id,!r.is_active);await questions.reload()}catch(e){setError(e instanceof Error?e.message:'Error')}};
-  const classify=async(r:Row,kind:string)=>{const ok=await confirm({message:l('Murojaat turini o‘zgartirasizmi?','Изменить тип обращения?','Change the request type?')});if(!ok)return;try{await api.classifyQuestion(token,r.id,kind);await questions.reload()}catch(e){setError(e instanceof Error?e.message:'Error')}};
-  const saveAnswer=async()=>{if(!answering||!answer.trim())return;try{await api.answerQuestion(token,answering.id,answer.trim());setAnswering(null);setAnswer('');await questions.reload()}catch(e){setError(e instanceof Error?e.message:'Error')}};
+  const toggleReview=async(r:Row)=>{const hiding=Boolean(r.is_active);const ok=await confirm({danger:hiding,message:hiding?l('Ushbu sharhni yashirishga ishonchingiz komilmi?','Вы уверены, что хотите скрыть этот отзыв?','Are you sure you want to hide this review?'):l('Ushbu sharhni qayta ko‘rsatishga ishonchingiz komilmi?','Вы уверены, что хотите снова показать этот отзыв?','Are you sure you want to show this review again?')});if(!ok)return;try{await api.setReviewActive(token,r.id,!r.is_active);await reviews.reload()}catch(e){setError(errorText(e,l))}};
+  const toggleQuestion=async(r:Row)=>{const hiding=Boolean(r.is_active);const ok=await confirm({danger:hiding,message:hiding?l('Ushbu savolni yashirishga ishonchingiz komilmi?','Вы уверены, что хотите скрыть этот вопрос?','Are you sure you want to hide this question?'):l('Ushbu savolni qayta ko‘rsatishga ishonchingiz komilmi?','Вы уверены, что хотите снова показать этот вопрос?','Are you sure you want to show this question again?')});if(!ok)return;try{await api.setQuestionActive(token,r.id,!r.is_active);await questions.reload()}catch(e){setError(errorText(e,l))}};
+  const classify=async(r:Row,kind:string)=>{const ok=await confirm({message:l('Murojaat turini o‘zgartirasizmi?','Изменить тип обращения?','Change the request type?')});if(!ok)return;try{await api.classifyQuestion(token,r.id,kind);await questions.reload()}catch(e){setError(errorText(e,l))}};
+  const saveAnswer=async()=>{if(!answering||!answer.trim())return;try{await api.answerQuestion(token,answering.id,answer.trim());setAnswering(null);setAnswer('');await questions.reload()}catch(e){setError(errorText(e,l))}};
   return <>
     <PageTitle title={l('Sharhlar va savollar','Отзывы и вопросы','Reviews & questions')} subtitle={l('Sharhlarni moderatsiya qiling va mahsulot savollariga javob bering.','Модерируйте отзывы и отвечайте на вопросы о товарах.','Moderate reviews and answer product questions.')}/>
     {error&&<Alert severity="error" sx={{mb:2}} onClose={()=>setError(null)}>{error}</Alert>}
@@ -1025,7 +1025,7 @@ export function PromotionsPage(){
       setProducts(allProducts);
       setBanners(visibleBannerRows);
     }catch(e){
-      setError(e instanceof Error?e.message:'Error');
+      setError(errorText(e,l));
     }finally{
       setLoading(false);
     }
@@ -1041,7 +1041,7 @@ export function PromotionsPage(){
       await load();
       return true;
     }catch(e){
-      setError(e instanceof Error?e.message:'Error');
+      setError(errorText(e,l));
       return false;
     }finally{
       setSaving(false);
@@ -1243,10 +1243,10 @@ export function PromotionsPage(){
 export function SettingsPage(){
  const token=useToken(),l=useL(),enumLabel=useEnumLabel();const{confirm,confirmDialog}=useConfirm();const[tab,setTab]=useState(0),[settings,setSettings]=useState<Row>({}),[admins,setAdmins]=useState<Row[]>([]),[access,setAccess]=useState<Row|null>(null),[accessFor,setAccessFor]=useState<Row|null>(null),[newAdmin,setNewAdmin]=useState(false),[adminForm,setAdminForm]=useState({login_id:'',password:'',name:''}),[message,setMessage]=useState('');
  const [settingsError,setSettingsError]=useState<string|null>(null),[adminsError,setAdminsError]=useState<string|null>(null),[actionError,setActionError]=useState<string|null>(null),[settingsLoading,setSettingsLoading]=useState(false),[adminsLoading,setAdminsLoading]=useState(false);
- const loadSettings=useCallback(async()=>{setSettingsLoading(true);setSettingsError(null);try{setSettings(await api.getSettings(token)||{})}catch(ex){setSettingsError(ex instanceof Error?ex.message:'REQUEST_FAILED')}finally{setSettingsLoading(false)}},[token]);
- const loadAdmins=useCallback(async()=>{setAdminsLoading(true);setAdminsError(null);try{const rows=await api.listAdmins(token);if(!Array.isArray(rows))throw new Error('INVALID_RESPONSE');setAdmins(rows);setAccess(await getStaffAccess(token).catch(()=>null))}catch(ex){setAdminsError(ex instanceof Error?ex.message:'REQUEST_FAILED')}finally{setAdminsLoading(false)}},[token]);
+ const loadSettings=useCallback(async()=>{setSettingsLoading(true);setSettingsError(null);try{setSettings(await api.getSettings(token)||{})}catch(ex){setSettingsError(errorText(ex,l))}finally{setSettingsLoading(false)}},[token]);
+ const loadAdmins=useCallback(async()=>{setAdminsLoading(true);setAdminsError(null);try{const rows=await api.listAdmins(token);if(!Array.isArray(rows))throw new Error('INVALID_RESPONSE');setAdmins(rows);setAccess(await getStaffAccess(token).catch(()=>null))}catch(ex){setAdminsError(errorText(ex,l))}finally{setAdminsLoading(false)}},[token]);
  const load=useCallback(async()=>{await Promise.all([loadSettings(),loadAdmins()])},[loadSettings,loadAdmins]);useEffect(()=>{void load()},[load]);
- const runAction=async(action:()=>Promise<void>)=>{setActionError(null);try{await action()}catch(ex){setActionError(ex instanceof Error?ex.message:'REQUEST_FAILED')}};
+ const runAction=async(action:()=>Promise<void>)=>{setActionError(null);try{await action()}catch(ex){setActionError(errorText(ex,l))}};
  const loadError=l('Ma’lumotlarni yuklab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось загрузить данные. Попробуйте ещё раз.','Could not load the data. Please try again.');
 
  const saveSettings=async()=>{const ok=await confirm({message:l('Tizim sozlamalarini saqlashga ishonchingiz komilmi?','Вы уверены, что хотите сохранить системные настройки?','Are you sure you want to save the system settings?')});if(!ok)return;await api.updateSettings(token,settings);setMessage(l('Saqlandi','Сохранено','Saved'));};const toggleAdmin=async(a:Row)=>{const disabling=a.status==='ACTIVE';const ok=await confirm({danger:disabling,message:disabling?l('Ushbu administrator hisobini o‘chirishga ishonchingiz komilmi?','Вы уверены, что хотите отключить эту учётную запись администратора?','Are you sure you want to disable this administrator account?'):l('Ushbu administrator hisobini faollashtirishga ishonchingiz komilmi?','Вы уверены, что хотите активировать эту учётную запись администратора?','Are you sure you want to enable this administrator account?')});if(!ok)return;await api.setAdminStatus(token,a.id,disabling?'INACTIVE':'ACTIVE');await loadAdmins()};const createAdmin=async()=>{await api.registerAdmin(token,adminForm);setNewAdmin(false);setAdminForm({login_id:'',password:'',name:''});await loadAdmins()};

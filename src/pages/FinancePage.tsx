@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { errorText } from '../api/errorText';
 import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, Switch, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, TextField, Typography } from '@mui/material';
 import { useAuth } from '../auth/AuthProvider';
 import { can } from '../auth/permissions';
@@ -29,7 +30,7 @@ export default function FinancePage() {
       WAREHOUSE_INVALID_INPUT: ['Majburiy maydonlarni tekshiring.', 'Проверьте обязательные поля.', 'Check the required fields.'],
       ADMIN_PERMISSION_DENIED: ['Bu amal uchun ruxsatingiz yo‘q.', 'Нет прав на это действие.', 'You are not allowed to do this.'],
     };
-    const m = known[code]; return m ? l(...m) : code || l('Amal bajarilmadi', 'Действие не выполнено', 'Action failed');
+    const m = known[code]; return m ? l(...m) : errorText(e, l);
   };
   const run = async (action: () => Promise<void>) => { if (busy) return; setBusy(true); setError(null); try { await action(); } catch (e) { setError(message(e)); } finally { setBusy(false); } };
   const loadAccounts = useCallback(() => api.accounts(token).then(setAccounts).catch(e => setError(message(e))), [token]); // eslint-disable-line react-hooks/exhaustive-deps

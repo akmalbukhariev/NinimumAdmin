@@ -1,4 +1,5 @@
 import {useEffect,useState} from 'react';
+import { errorText } from '../api/errorText';
 import {Alert,Box,Button,CircularProgress,Dialog,DialogActions,DialogContent,DialogTitle,MenuItem,Stack,Tab,Tabs,Table,TableHead,TableBody,TableCell,TableRow,TablePagination,TextField,Typography} from '@mui/material';
 import {apiRequest} from '../api/client';import {useAuth} from '../auth/AuthProvider';import {useL,dateTime,PageTitle,TablePanel} from '../components/AdminCommon';
 import {ProductPicker} from './WarehousePage';import {locations as loadLocations} from '../api/warehouseApi';import {prepareInvoiceImage,type Row,type PageData} from '../api/managementApi';
@@ -36,7 +37,7 @@ export default function InventoryPage(){
   INVENTORY_PHOTO_REQUIRED:['Rasm qo‘shing.','Добавьте фото.','Add a photo.'],
   INVENTORY_STOCK_CHANGED:['Qoldiq o‘zgardi. Sanashni bekor qilib, qaytadan boshlang.','Остаток изменился. Аннулируйте пересчёт и начните заново.','Stock changed. Void the count and start again.'],
   INVENTORY_VARIANCE_REASON_REQUIRED:['Farq bor. Farq sababini yozing.','Есть расхождение. Укажите причину.','There is a difference. Enter the reason.'],
- };const m=known[code];return m?l(...m):code||l('Amal bajarilmadi','Действие не выполнено','Action failed');};
+ };const m=known[code];return m?l(...m):errorText(e,l);};
  async function run(action:()=>Promise<void>){if(busy)return;setBusy(true);setError('');try{await action();}catch(e){setError(message(e));}finally{setBusy(false)}}
  useEffect(()=>{let live=true;api<Row>('/status').then(s=>{if(live)setStatus(s)}).catch(()=>{if(live)setError(l('Yuklab bo‘lmadi','Не удалось загрузить','Could not load'))});loadLocations(token).then(r=>{if(live)setBins(r.filter(b=>Number(b.is_active)!==0&&b.hierarchy_level==='BIN'))}).catch(()=>{});return()=>{live=false}},[token]);
  useEffect(()=>{if(!status?.enabled)return;let live=true;setError('');setData(null);const filter=`${product?`&product_id=${product.id}`:''}${location?`&location_id=${location}`:''}`;
