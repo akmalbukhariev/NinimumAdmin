@@ -205,6 +205,7 @@ export function ProductsPage() {
   const [editOriginal, setEditOriginal] = useState<Row | null>(null);
   const [editDeletedImageIds, setEditDeletedImageIds] = useState<number[]>([]);
   const [editError, setEditError] = useState<string | null>(null);
+  const [priceReasonMissing, setPriceReasonMissing] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [images, setImages] = useState<File[]>([]);
@@ -382,7 +383,7 @@ export function ProductsPage() {
       const detail = await api.getProduct(token, id);
       const product = { ...detail.product, images: detail.images ?? [] };
       setEdit(product);
-      setEditOriginal({ ...product, images: [...(product.images ?? [])] });
+      setEditOriginal({ ...product, images: [...(product.images ?? [])] }); setPriceReasonMissing(false);
       setEditImages([]);
       setEditDeletedImageIds([]);
       setEditError(null);
@@ -411,7 +412,7 @@ export function ProductsPage() {
   const closeEdit = () => {
     if (editSaving) return;
     setEdit(null);
-    setEditOriginal(null);
+    setEditOriginal(null); setPriceReasonMissing(false);
     setEditImages([]);
     setEditDeletedImageIds([]);
     setEditError(null);
@@ -476,6 +477,7 @@ export function ProductsPage() {
 
       setEdit(null);
       setEditOriginal(null);
+      setPriceReasonMissing(false);
       setEditImages([]);
       setEditDeletedImageIds([]);
       setEditError(null);
@@ -489,7 +491,7 @@ export function ProductsPage() {
             'Could not connect to the server. Some changes may not have been saved. Please try again.',
           )
         : message === 'PRICE_REASON_REQUIRED'
-          ? l('Narx o‘zgargan. "Narx o‘zgarishi sababi" maydonini to‘ldiring.','Цена изменена. Заполните поле «Причина изменения цены».','The price changed. Fill in "Reason for price change".')
+          ? (setPriceReasonMissing(true), window.setTimeout(()=>document.getElementById('price-change-reason')?.focus(),0), l('Narx o‘zgargan. "Narx o‘zgarishi sababi" maydonini to‘ldiring.','Цена изменена. Заполните поле «Причина изменения цены».','The price changed. Fill in "Reason for price change".'))
           : message === 'ADMIN_PERMISSION_DENIED'
             ? l('Narxni o‘zgartirishga ruxsatingiz yo‘q.','У вас нет права менять цены.','You are not allowed to change prices.')
             : errorText(error, l));
@@ -717,8 +719,9 @@ export function ProductsPage() {
         </TextField>
         {editField('name', l('Nomi', 'Название', 'Name'))}{editField('brand', l('Brend', 'Бренд', 'Brand'))}
         {editField('price', l('Narx', 'Цена', 'Price'), 'number')}{editField('subscription_price', l('Obuna narxi', 'Цена подписки', 'Subscription price'), 'number')}
+        {/* Right under the prices, so it is found when Q-10 asks for it. */}
+        <TextField id="price-change-reason" sx={{ gridColumn: '1 / -1' }} multiline error={priceReasonMissing} label={l('Narx o‘zgarishi sababi','Причина изменения цены','Reason for price change')} helperText={priceReasonMissing?l('Narx o‘zgargani uchun sababini yozing.','Цена изменена — укажите причину.','The price changed — enter the reason.'):l('Narxni o‘zgartirsangiz, sababini yozing.','Если меняете цену, укажите причину.','If you change a price, enter the reason.')} value={edit?.price_change_reason||''} onChange={e=>{setPriceReasonMissing(false);setEdit(v=>v&&({...v,price_change_reason:e.target.value}));}}/>
         <ProductMetadataFields value={edit??{}} onChange={(key,value)=>setEdit(v=>v&&({...v,[key]:value}))}/>
-        <TextField multiline label={l('Narx o‘zgarishi sababi','Причина изменения цены','Reason for price change')} helperText={l('Xodim narxni o‘zgartirganda majburiy.','Обязательно при изменении цены сотрудником.','Required when staff change a price.')} value={edit?.price_change_reason||''} onChange={e=>setEdit(v=>v&&({...v,price_change_reason:e.target.value}))}/>
         <Button disabled={!edit?.id} onClick={()=>setPriceHistoryId(edit!.id)}>{l('Narxlar tarixi','История цен','Price history')}</Button>
         {editField('stock_quantity', l('Ombor', 'Остаток', 'Stock'), 'number')}{editField('vat_percent', 'VAT %', 'number')}
         {editField('sku', 'SKU')}{editField('barcode', l('Shtrix kod', 'Штрихкод', 'Barcode'))}{editField('weight_gram', l('Og‘irlik (g)', 'Вес (г)', 'Weight (g)'), 'number')}
