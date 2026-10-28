@@ -194,6 +194,7 @@ export const listDeliveryJobs = (token:string,params:Row={}) => apiRequest<PageD
 export const listDeliveryWorkers = (token:string) => apiRequest<Row[]>(`${m}/delivery/workers`,{token}).then(r=>r.resultData);
 export const createDeliveryWorker = (token:string,data:Row) => apiRequest<Row>('/ninimum/api/v1/delivery-app/admin/createWorker',{token,method:'POST',body:JSON.stringify(data)}).then(r=>r.resultData);
 export const setDeliveryWorkerStatus = (token:string,id:number,status:string) => apiRequest<null>(`${m}/delivery/workers/${id}/status`,{token,method:'PUT',body:JSON.stringify({status})});
+export const resetDeliveryWorkerPassword = (token:string,id:number,password:string) => apiRequest<null>(`${m}/delivery/workers/${id}/password`,{token,method:'PUT',body:JSON.stringify({password})});
 export const deleteDeliveryWorker = (token:string,id:number) => apiRequest<null>(`${m}/delivery/workers/${id}`,{token,method:'DELETE'});
 export const updateDeliveryJob = (token:string,id:number,data:Row) => apiRequest<null>(`${m}/delivery/jobs/${id}`,{token,method:'PUT',body:JSON.stringify(data)});
 

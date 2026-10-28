@@ -1,5 +1,6 @@
 import { useEffect,useState } from 'react';
-import { Alert,Autocomplete,Button,Checkbox,Dialog,DialogActions,DialogContent,DialogTitle,FormControlLabel,Stack,TextField,Typography } from '@mui/material';
+import { Alert,Autocomplete,Button,Checkbox,Dialog,DialogActions,DialogContent,DialogTitle,FormControlLabel,Stack,Typography } from '@mui/material';
+import { TextField } from './AdminField';
 import { useL } from './AdminCommon';
 import { apiRequest } from '../api/client';
 import { listProducts,type Row } from '../api/managementApi';
@@ -9,7 +10,7 @@ function ProductRule({token,row,onChange,onRemove}:{token:string;row:Row;onChang
  const [failed,setFailed]=useState(false);
  useEffect(()=>{let active=true;const timer=setTimeout(()=>{void listProducts(token,{search:query,page_size:20,active:true}).then(v=>{if(active){setChoices(v.items);setFailed(false);}}).catch(()=>{if(active)setFailed(true);});},250);return()=>{active=false;clearTimeout(timer);};},[query,token]);
  const selected=row.product_id?{id:row.product_id,name:row.product_name||String(row.product_id)}:null;
- return <Stack spacing={1} direction={{xs:'column',sm:'row'}}><Autocomplete sx={{minWidth:240,flex:1}} options={selected&&!choices.some(r=>r.id===selected.id)?[selected,...choices]:choices} value={selected} filterOptions={v=>v} isOptionEqualToValue={(a,b)=>a.id===b.id} getOptionLabel={r=>r.name} onInputChange={(_,v,reason)=>{if(reason==='input'||reason==='clear')setQuery(v);}} onChange={(_,v)=>onChange({...row,product_id:v?.id,product_name:v?.name})} renderInput={params=><TextField {...params} label={l('Mahsulot','Товар','Product')} error={failed} helperText={failed?l('Qayta qidiring','Повторите поиск','Search again'):undefined}/>}/><TextField type="number" label={l('Chegirma %','Скидка %','Discount %')} value={row.discount_percent??0} onChange={e=>onChange({...row,discount_percent:e.target.value})}/><Button onClick={onRemove}>{l('Olib tashlash','Удалить','Remove')}</Button></Stack>;
+ return <Stack spacing={1} direction={{xs:'column',sm:'row'}}><Autocomplete sx={{minWidth:240,flex:1}} options={selected&&!choices.some(r=>r.id===selected.id)?[selected,...choices]:choices} value={selected} filterOptions={v=>v} isOptionEqualToValue={(a,b)=>a.id===b.id} getOptionLabel={r=>r.name} onInputChange={(_,v,reason)=>{if(reason==='input'||reason==='clear')setQuery(v);}} onChange={(_,v)=>onChange({...row,product_id:v?.id,product_name:v?.name})} renderInput={params=><TextField required {...params} label={l('Mahsulot','Товар','Product')} error={failed} helperText={failed?l('Qayta qidiring','Повторите поиск','Search again'):undefined}/>}/><TextField required type="number" label={l('Chegirma %','Скидка %','Discount %')} value={row.discount_percent??0} onChange={e=>onChange({...row,discount_percent:e.target.value})}/><Button onClick={onRemove}>{l('Olib tashlash','Удалить','Remove')}</Button></Stack>;
 }
 export function TariffBenefits({token,id,onClose}:{token:string;id:number;onClose:()=>void}) {
  const l=useL(),[value,setValue]=useState<Row|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);

@@ -1,4 +1,5 @@
-import {Alert,TextField} from '@mui/material';
+import {Alert} from '@mui/material';
+import { TextField } from './AdminField';
 import type {Row} from '../api/managementApi';
 import {useL} from './AdminCommon';
 export function metadataValues(value:Row):Row {

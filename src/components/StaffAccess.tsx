@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import { errorText } from '../api/errorText';
-import {Alert,Button,Checkbox,Dialog,DialogActions,DialogContent,DialogTitle,FormControlLabel,MenuItem,Radio,Stack,Table,TableBody,TableCell,TableHead,TableRow,TextField,Typography} from '@mui/material';
+import {Alert,Button,Checkbox,Dialog,DialogActions,DialogContent,DialogTitle,FormControlLabel,MenuItem,Radio,Stack,Table,TableBody,TableCell,TableHead,TableRow,Typography} from '@mui/material';
+import { TextField } from './AdminField';
 import {useL} from './AdminCommon';
 import {apiRequest} from '../api/client';
 import type {Row} from '../api/managementApi';
@@ -41,7 +42,7 @@ export function StaffAccessDialog({token,admin,overview,onClose,onSaved}:{token:
   const save=async()=>{setBusy(true);setError(null);try{await saveStaffAccess(token,Number(admin.id),role,perms);onSaved();onClose();}catch(e){setError(errorText(e,l));}finally{setBusy(false);}};
   return <Dialog open onClose={()=>{if(!busy)onClose()}} fullWidth maxWidth="md"><DialogTitle>{l('Ruxsatlar','Права доступа','Permissions')}: {admin.name||admin.login_id}</DialogTitle><DialogContent><Stack spacing={2} sx={{pt:1}}>
     {error&&<Alert severity="error">{error}</Alert>}
-    <TextField select label={l('Rol','Роль','Role')} value={role} disabled={busy} onChange={e=>pickRole(e.target.value)} helperText={l('Rolni tanlasangiz, ruxsatlar shu rolning standart to‘plamiga qaytadi. Keyin har birini alohida o‘zgartirish mumkin.','При выборе роли права сбрасываются к её стандартному набору; затем их можно менять по одному.','Choosing a role resets the permissions to its defaults; you can then change each one.')}>
+    <TextField required select label={l('Rol','Роль','Role')} value={role} disabled={busy} onChange={e=>pickRole(e.target.value)} helperText={l('Rolni tanlasangiz, ruxsatlar shu rolning standart to‘plamiga qaytadi. Keyin har birini alohida o‘zgartirish mumkin.','При выборе роли права сбрасываются к её стандартному набору; затем их можно менять по одному.','Choosing a role resets the permissions to its defaults; you can then change each one.')}>
       {Object.keys(overview.roles).map(r=><MenuItem key={r} value={r}>{staffRoleLabel(l,r)}</MenuItem>)}
     </TextField>
     <Table size="small"><TableHead><TableRow><TableCell>{l('Bo‘lim','Раздел','Area')}</TableCell><TableCell align="center">{l('Yo‘q','Нет','None')}</TableCell><TableCell align="center">{l('Ko‘rish','Просмотр','View')}</TableCell><TableCell align="center">{l('O‘zgartirish','Изменение','Edit')}</TableCell></TableRow></TableHead><TableBody>

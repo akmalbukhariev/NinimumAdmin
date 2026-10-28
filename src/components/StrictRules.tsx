@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useState} from 'react';
-import {Alert,Button,Chip,Stack,Switch,TextField,Table,TableBody,TableCell,TableHead,TableRow,Typography} from '@mui/material';
-import {useL,LoadState,TablePanel,dateTime} from './AdminCommon';
+import {Alert,Button,Chip,Stack,Switch,Table,TableBody,TableCell,TableHead,TableRow,Typography} from '@mui/material';
+import { TextField } from './AdminField';
+import {useL,LoadState,TablePanel,dateTime, ErrorNotice } from './AdminCommon';
 import {apiRequest} from '../api/client';
 import {useAuth} from '../auth/AuthProvider';
 import type {Row} from '../api/managementApi';
@@ -41,7 +42,7 @@ function PeriodClosing(){
  if(!state)return error?<Alert severity="error" sx={{mb:2}}>{error}</Alert>:null;
  return <TablePanel sx={{p:2,mb:2}}><Typography variant="subtitle1" sx={{fontWeight:700}}>{l('Davr yopish','Закрытие периода','Period closing')}</Typography>
   <Typography variant="body2" sx={{color:'text.secondary',mb:2}}>{state.closed_until?l(`Davr ${state.closed_until.split('-').reverse().join('.')} gacha yopilgan. Shu sanagacha bo‘lgan pul hujjatlari, yetkazib beruvchiga to‘lovlar, kirimlar va inventar hujjatlarini kiritib, tasdiqlab yoki bekor qilib bo‘lmaydi (Q-16).`,`Период закрыт по ${state.closed_until.split('-').reverse().join('.')}. Денежные документы, оплаты поставщикам, приходы и складские документы по эту дату нельзя вводить, проводить или сторнировать (Q-16).`,`The period is closed up to ${state.closed_until.split('-').reverse().join('.')}. Money documents, supplier payments, receipts and inventory documents up to that date can’t be entered, approved or reversed (Q-16).`):l('Hech qanday davr yopilmagan.','Закрытых периодов нет.','No period is closed.')}</Typography>
-  {error&&<Alert severity="error" sx={{mb:2}} onClose={()=>setError(null)}>{error}</Alert>}
+  <ErrorNotice message={error} sx={{mb:2}} onClose={()=>setError(null)}/>
   <Stack direction={{xs:'column',sm:'row'}} spacing={2} sx={{alignItems:{sm:'flex-start'}}}>
    <TextField size="small" type="date" label={l('Qaysi sanagacha yopiladi','Закрыть по дату','Closed up to')} value={until} disabled={busy} onChange={e=>setUntil(e.target.value)} slotProps={{inputLabel:{shrink:true}}}/>
    {reopen&&<TextField size="small" required label={l('Ochish sababi','Причина открытия','Reason to reopen')} value={reason} disabled={busy} onChange={e=>setReason(e.target.value)} sx={{minWidth:240}}/>}
@@ -66,7 +67,7 @@ export function StrictRulesSettings(){
   {error&&rows&&<Alert severity="error" sx={{mb:2}} onClose={()=>setError(null)}>{error}</Alert>}
   <Alert severity="info" sx={{mb:2}}>{l('Har bir qoida xodimlar va Egasi uchun alohida yoqiladi. O‘zgarishlar darhol kuchga kiradi va kim o‘zgartirgani yoziladi.','Каждое правило включается отдельно для сотрудников и владельца. Изменения действуют сразу и записываются.','Each rule is switched separately for staff and the owner. Changes apply at once and are logged.')}</Alert>
   <TablePanel><Table size="small"><TableHead><TableRow><TableCell>№</TableCell><TableCell>{l('Qoida','Правило','Rule')}</TableCell><TableCell align="center">{l('Xodim','Сотрудник','Staff')}</TableCell><TableCell align="center">{l('Egasi','Владелец','Owner')}</TableCell><TableCell>{l('Holat','Статус','Status')}</TableCell></TableRow></TableHead>
-  <TableBody>{rows?.map(r=><TableRow key={r.code}><TableCell>{r.code}</TableCell><TableCell>{describe(l,r.code)}{r.value&&(r.kind==='SWITCH'?<TextField size="small" type="number" label={l('Farq, %','Разница, %','Difference, %')} defaultValue={r.value} disabled={busy!==null} sx={{display:'block',mt:1,width:140}} slotProps={{htmlInput:{min:1,max:100}}} onBlur={e=>{const v=Number(e.target.value);if(String(v)!==String(r.value)&&Number.isInteger(v)&&v>=1&&v<=100)void save(r,'value',v);}}/>:<Typography variant="caption" sx={{display:'block',color:'text.secondary'}}>{r.value}</Typography>)}{r.updated_by&&<Typography variant="caption" sx={{display:'block',color:'text.secondary'}}>{r.updated_by} · {dateTime(r.updated_at)}</Typography>}</TableCell>
+  <TableBody>{rows?.map(r=><TableRow key={r.code}><TableCell>{r.code}</TableCell><TableCell>{describe(l,r.code)}{r.value&&(r.kind==='SWITCH'?<TextField required size="small" type="number" label={l('Farq, %','Разница, %','Difference, %')} defaultValue={r.value} disabled={busy!==null} sx={{display:'block',mt:1,width:140}} slotProps={{htmlInput:{min:1,max:100}}} onBlur={e=>{const v=Number(e.target.value);if(String(v)!==String(r.value)&&Number.isInteger(v)&&v>=1&&v<=100)void save(r,'value',v);}}/>:<Typography variant="caption" sx={{display:'block',color:'text.secondary'}}>{r.value}</Typography>)}{r.updated_by&&<Typography variant="caption" sx={{display:'block',color:'text.secondary'}}>{r.updated_by} · {dateTime(r.updated_at)}</Typography>}</TableCell>
    {r.kind==='SWITCH'?<><TableCell align="center"><Switch checked={Boolean(r.staff_enabled)} disabled={busy!==null} onChange={e=>void save(r,'staff_enabled',e.target.checked)}/></TableCell><TableCell align="center"><Switch checked={Boolean(r.owner_enabled)} disabled={busy!==null} onChange={e=>void save(r,'owner_enabled',e.target.checked)}/></TableCell><TableCell/></>
    :<><TableCell/><TableCell/><TableCell>{status(r)}</TableCell></>}
   </TableRow>)}</TableBody></Table></TablePanel>

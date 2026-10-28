@@ -1,7 +1,11 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react';
-import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Stack, TableContainer, Typography } from '@mui/material';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, InputAdornment, Paper, Portal, Snackbar, Stack, TableContainer, Typography, type SxProps, type TextFieldProps, type Theme } from '@mui/material';
+import { TextField } from './AdminField';
+import VisibilityOffRounded from '@mui/icons-material/VisibilityOffRounded';
+import VisibilityRounded from '@mui/icons-material/VisibilityRounded';
 import AddRounded from '@mui/icons-material/AddRounded';
 import { useLanguage } from '../i18n/LanguageProvider';
+import { errorText } from '../api/errorText';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { can, pagePermissions } from '../auth/permissions';
@@ -181,3 +185,28 @@ export function useConfirm() {
 
 export const money = (value: unknown) => `${new Intl.NumberFormat('uz-UZ').format(Number(value || 0))} so'm`;
 export { dateTime } from '../utils/dateTime';
+
+/** Password input with an eye button that shows or hides the typed password. */
+export function PasswordField(props: TextFieldProps) {
+  const [show, setShow] = useState(false);
+  return <TextField {...props} type={show ? 'text' : 'password'} slotProps={{ ...props.slotProps, input: { endAdornment: <InputAdornment position="end"><IconButton onClick={() => setShow(v => !v)} edge="end" tabIndex={-1} aria-label="show password">{show ? <VisibilityOffRounded /> : <VisibilityRounded />}</IconButton></InputAdornment> } }} />;
+}
+
+/** Page error. When it appears while a dialog is open it is shown on top of the dialog, not hidden behind it. */
+export function ErrorNotice({ message, onClose, sx }: { message: ReactNode; onClose?: () => void; sx?: SxProps<Theme> }) {
+  const overDialog = useMemo(() => !!message && typeof document !== 'undefined' && !!document.querySelector('.MuiDialog-root'), [message]);
+  if (!message) return null;
+  if (overDialog) return <Portal><Snackbar open anchorOrigin={{ vertical: 'top', horizontal: 'center' }} sx={{ zIndex: t => t.zIndex.modal + 100 }}><Alert severity="error" variant="filled" onClose={onClose} sx={{ maxWidth: 560 }}>{message}</Alert></Snackbar></Portal>;
+  return <Alert severity="error" sx={sx} onClose={onClose}>{message}</Alert>;
+}
+
+export const passwordOk = (v: string) => v.length > 0;
+
+/** Owner/admin sets a new password for a staff app account (courier or warehouse worker). */
+export function PasswordResetDialog({ name, onClose, onSave }: { name: string | null; onClose: () => void; onSave: (password: string) => Promise<unknown> }) {
+  const l = useL();
+  const [password, setPassword] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [done, setDone] = useState(false);
+  const close = () => { if (busy) return; setPassword(''); setError(null); setDone(false); onClose(); };
+  const save = async () => { setBusy(true); setError(null); try { await onSave(password); setDone(true); } catch (e) { setError(errorText(e, l)); } finally { setBusy(false); } };
+  return <Dialog open={name !== null} onClose={close} fullWidth maxWidth="xs"><DialogTitle>{l('Parolni yangilash', 'Сменить пароль', 'Reset password')}{name ? ` · ${name}` : ''}</DialogTitle><DialogContent sx={{ pt: '12px!important' }}><Stack spacing={2}>{error && <Alert severity="error">{error}</Alert>}{done ? <Alert severity="success">{l('Yangi parol saqlandi. Xodimga yangi parolni ayting.', 'Новый пароль сохранён. Сообщите его сотруднику.', 'New password saved. Tell the employee the new password.')}</Alert> : <PasswordField required autoFocus fullWidth disabled={busy} label={l('Yangi parol', 'Новый пароль', 'New password')} value={password} autoComplete="new-password" onChange={e => setPassword(e.target.value)} />}</Stack></DialogContent><DialogActions><Button disabled={busy} onClick={close}>{done ? l('Yopish', 'Закрыть', 'Close') : l('Bekor qilish', 'Отмена', 'Cancel')}</Button>{!done && <Button variant="contained" disabled={busy || !passwordOk(password)} onClick={() => void save()}>{l('Saqlash', 'Сохранить', 'Save')}</Button>}</DialogActions></Dialog>;
+}

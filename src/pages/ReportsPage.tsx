@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Autocomplete, Box, Button, Chip, CircularProgress, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
+import { Alert, Autocomplete, Box, Button, Chip, CircularProgress, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
+import { TextField } from '../components/AdminField';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { can } from '../auth/permissions';
-import { PageTitle, Panel, TablePanel, dateTime, useEnumLabel, useL } from '../components/AdminCommon';
+import { PageTitle, Panel, TablePanel, dateTime, useEnumLabel, useL, ErrorNotice } from '../components/AdminCommon';
 import { apiRequest } from '../api/client';
 import { listCategories, listDeliveryWorkers, listProducts, type Row } from '../api/managementApi';
 import { locations as listLocations, suppliers as listSuppliers } from '../api/warehouseApi';
@@ -168,7 +169,7 @@ export default function ReportsPage() {
 
   return <>
     <PageTitle title={l('Hisobotlar', 'Отчёты', 'Reports')} />
-    {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+    <ErrorNotice message={error} sx={{mb:2}} onClose={()=>setError(null)}/>
     <Panel sx={{ p: 2, mb: 2 }}><Stack spacing={2}>
       <TextField select size="small" label={l('Hisobot', 'Отчёт', 'Report')} value={code} onChange={e => setCode(e.target.value)} sx={{ maxWidth: 520 }}>
         {shown.map(r => <MenuItem key={r.code} value={r.code}>{l(...r.title)}</MenuItem>)}

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { errorText } from '../api/errorText';
-import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, Switch, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, Switch, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, Typography } from '@mui/material';
+import { TextField } from '../components/AdminField';
 import { useAuth } from '../auth/AuthProvider';
 import { can } from '../auth/permissions';
-import { LoadState, PageTitle, Panel, TablePanel, dateTime, money, useL } from '../components/AdminCommon';
+import { LoadState, PageTitle, Panel, TablePanel, dateTime, money, useL, ErrorNotice } from '../components/AdminCommon';
 import { readReturnPhoto } from '../components/ReturnEvidence';
 import * as api from '../api/financeApi';
 import type { Row } from '../api/managementApi';
@@ -39,7 +40,7 @@ export default function FinancePage() {
 
   return <>
     <PageTitle title={l('Pul', 'Деньги', 'Money')} />
-    {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+    <ErrorNotice message={error} sx={{mb:2}} onClose={()=>setError(null)}/>
     <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" sx={{ mb: 2 }}>
       <Tab label={l('Kassa va hisoblar', 'Касса и счета', 'Cash and accounts')} /><Tab label={l('Hujjatlar', 'Документы', 'Documents')} />
       <Tab label={l('Pul harakati', 'Движение денег', 'Money movement')} /><Tab label={l('Oylik natija', 'Итог месяца', 'Monthly result')} />
@@ -65,8 +66,8 @@ function Balances({ token, accounts, editable, busy, run, reload }: { token: str
         <TableCell>{editable && <Button size="small" onClick={() => setOpening({ id: a.id, name: a.name, opening_balance: a.opening_balance ?? 0, opening_date: a.opening_date || tashkentToday() })}>{l('Boshlang‘ich qoldiq', 'Начальный остаток', 'Opening balance')}</Button>}</TableCell></TableRow>)}</TableBody></Table></TablePanel>
     <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>{l('Kassani sanash', 'Пересчёт кассы', 'Cash count')}</Typography>
     {editable && <Panel sx={{ p: 2, mb: 2 }}><Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-      <TextField select size="small" label={l('Joy', 'Место', 'Place')} value={count.account_id} onChange={e => setCount({ ...count, account_id: e.target.value })} sx={{ minWidth: 200 }}>{accounts?.map(a => <MenuItem key={a.id} value={String(a.id)}>{a.name}</MenuItem>)}</TextField>
-      <TextField size="small" type="number" label={l('Sanalgan summa', 'Посчитанная сумма', 'Counted amount')} value={count.counted_amount} onChange={e => setCount({ ...count, counted_amount: e.target.value })} />
+      <TextField required select size="small" label={l('Joy', 'Место', 'Place')} value={count.account_id} onChange={e => setCount({ ...count, account_id: e.target.value })} sx={{ minWidth: 200 }}>{accounts?.map(a => <MenuItem key={a.id} value={String(a.id)}>{a.name}</MenuItem>)}</TextField>
+      <TextField required size="small" type="number" label={l('Sanalgan summa', 'Посчитанная сумма', 'Counted amount')} value={count.counted_amount} onChange={e => setCount({ ...count, counted_amount: e.target.value })} />
       <TextField size="small" label={l('Izoh', 'Примечание', 'Note')} value={count.note} onChange={e => setCount({ ...count, note: e.target.value })} />
       <Button variant="contained" disabled={busy || count.counted_amount === ''} onClick={() => void run(async () => { setResult(await api.addCount(token, count)); setCount({ ...count, counted_amount: '', note: '' }); await loadCounts(); })}>{l('Saqlash', 'Сохранить', 'Save')}</Button>
     </Stack>{result && <Alert severity={Number(result.difference) === 0 ? 'success' : 'warning'} sx={{ mt: 2 }}>{l('Tizimda', 'По системе', 'System')}: {money(result.system_amount)} · {l('Sanaldi', 'Посчитано', 'Counted')}: {money(result.counted_amount)} · {l('Farq', 'Разница', 'Difference')}: {money(result.difference)}</Alert>}</Panel>}
@@ -75,8 +76,8 @@ function Balances({ token, accounts, editable, busy, run, reload }: { token: str
       {counts.length === 0 && <Typography sx={{ p: 2 }}>{l('Hali sanash yo‘q.', 'Пересчётов ещё нет.', 'No counts yet.')}</Typography>}</TablePanel>
     <Dialog open={!!opening} onClose={() => !busy && setOpening(null)} fullWidth maxWidth="xs"><DialogTitle>{opening?.name}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
       <Alert severity="info">{l('Shu kun boshidagi qoldiq. Undan oldingi harakatlar hisobga olinmaydi.', 'Остаток на начало этого дня. Более ранние движения не учитываются.', 'The balance at the start of this day. Earlier movements are not counted.')}</Alert>
-      <TextField type="number" label={l('Summa', 'Сумма', 'Amount')} value={opening?.opening_balance ?? ''} onChange={e => setOpening(o => o && { ...o, opening_balance: e.target.value })} />
-      <TextField type="date" label={l('Sana', 'Дата', 'Date')} slotProps={{ inputLabel: { shrink: true } }} value={opening?.opening_date ?? ''} onChange={e => setOpening(o => o && { ...o, opening_date: e.target.value })} />
+      <TextField required type="number" label={l('Summa', 'Сумма', 'Amount')} value={opening?.opening_balance ?? ''} onChange={e => setOpening(o => o && { ...o, opening_balance: e.target.value })} />
+      <TextField required type="date" label={l('Sana', 'Дата', 'Date')} slotProps={{ inputLabel: { shrink: true } }} value={opening?.opening_date ?? ''} onChange={e => setOpening(o => o && { ...o, opening_date: e.target.value })} />
     </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={() => setOpening(null)}>{l('Bekor qilish', 'Отмена', 'Cancel')}</Button>
       <Button variant="contained" disabled={busy} onClick={() => void run(async () => { await api.setOpening(token, opening!.id, { opening_balance: opening!.opening_balance, opening_date: opening!.opening_date }); setOpening(null); reload(); })}>{l('Saqlash', 'Сохранить', 'Save')}</Button></DialogActions></Dialog>
   </LoadState>;
@@ -109,7 +110,7 @@ function Documents({ token, accounts, types, setTypes, editable, owner, busy, ru
           {editable && d.status === 'POSTED' && <Button size="small" color="warning" onClick={() => setReverse({ id: d.id, reason: '' })}>{l('Bekor qilish', 'Сторно', 'Reverse')}</Button>}</Stack></TableCell></TableRow>)}</TableBody></Table>
       {Number(data?.total) === 0 && <Typography sx={{ p: 2 }}>{l('Hujjat yo‘q.', 'Документов нет.', 'No documents.')}</Typography>}</TablePanel></LoadState>
     <Dialog open={!!form} onClose={() => !busy && setForm(null)} fullWidth maxWidth="sm"><DialogTitle>{kindLabel(form?.kind)}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
-      <TextField type="date" label={l('Sana', 'Дата', 'Date')} slotProps={{ inputLabel: { shrink: true } }} value={form?.doc_date ?? ''} onChange={e => setForm(f => f && { ...f, doc_date: e.target.value })} />
+      <TextField required type="date" label={l('Sana', 'Дата', 'Date')} slotProps={{ inputLabel: { shrink: true } }} value={form?.doc_date ?? ''} onChange={e => setForm(f => f && { ...f, doc_date: e.target.value })} />
       <TextField required type="number" label={l('Summa', 'Сумма', 'Amount')} value={form?.amount ?? ''} onChange={e => setForm(f => f && { ...f, amount: e.target.value })} />
       <TextField select required label={form?.kind === 'INCOME' ? l('Qayerga', 'Куда', 'Into') : l('Qayerdan', 'Откуда', 'From')} value={form?.account_id ?? ''} onChange={e => setForm(f => f && { ...f, account_id: e.target.value })}>{accounts.map(a => <MenuItem key={a.id} value={String(a.id)}>{a.name}</MenuItem>)}</TextField>
       {form?.kind === 'TRANSFER' && <TextField select required label={l('Qayerga', 'Куда', 'Into')} value={form.to_account_id} onChange={e => setForm(f => f && { ...f, to_account_id: e.target.value })}>{accounts.map(a => <MenuItem key={a.id} value={String(a.id)}>{a.name}</MenuItem>)}</TextField>}
@@ -124,7 +125,7 @@ function Documents({ token, accounts, types, setTypes, editable, owner, busy, ru
       <DialogActions><Button disabled={busy} onClick={() => setReverse(null)}>{l('Yopish', 'Закрыть', 'Close')}</Button><Button color="warning" variant="contained" disabled={busy || !reverse?.reason.trim()} onClick={() => void run(async () => { await api.reverseDocument(token, reverse!.id, reverse!.reason); setReverse(null); await load(); reload(); })}>{l('Bekor qilish', 'Сторно', 'Reverse')}</Button></DialogActions></Dialog>
     <Dialog open={typesOpen} onClose={() => setTypesOpen(false)} fullWidth maxWidth="xs"><DialogTitle>{l('Xarajat turlari', 'Типы расходов', 'Expense types')}</DialogTitle><DialogContent>
       {types.map(t => <Stack key={t.id} direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}><Typography>{t.name}</Typography><Switch checked={Number(t.is_active) === 1 || t.is_active === true} disabled={busy} onChange={e => void run(async () => setTypes(await api.saveExpenseType(token, t.id, { name: t.name, is_active: e.target.checked })))} /></Stack>)}
-      <Stack direction="row" spacing={1} sx={{ mt: 2 }}><TextField size="small" fullWidth label={l('Yangi tur', 'Новый тип', 'New type')} value={newType} onChange={e => setNewType(e.target.value)} /><Button disabled={busy || !newType.trim()} onClick={() => void run(async () => { setTypes(await api.addExpenseType(token, newType.trim())); setNewType(''); })}>{l('Qo‘shish', 'Добавить', 'Add')}</Button></Stack>
+      <Stack direction="row" spacing={1} sx={{ mt: 2 }}><TextField required size="small" fullWidth label={l('Yangi tur', 'Новый тип', 'New type')} value={newType} onChange={e => setNewType(e.target.value)} /><Button disabled={busy || !newType.trim()} onClick={() => void run(async () => { setTypes(await api.addExpenseType(token, newType.trim())); setNewType(''); })}>{l('Qo‘shish', 'Добавить', 'Add')}</Button></Stack>
     </DialogContent><DialogActions><Button onClick={() => setTypesOpen(false)}>{l('Yopish', 'Закрыть', 'Close')}</Button></DialogActions></Dialog>
   </>;
 }

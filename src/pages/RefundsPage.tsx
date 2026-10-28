@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
+import { Alert, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
+import { TextField } from '../components/AdminField';
 import OpenInNewRounded from '@mui/icons-material/OpenInNewRounded';
 import ContentCopyRounded from '@mui/icons-material/ContentCopyRounded';
 import { Link as RouterLink } from 'react-router-dom';
@@ -87,7 +88,7 @@ export default function RefundsPage() {
         <TextField select required label={l('Qayerdan to‘landi', 'Откуда оплачено', 'Paid from')} value={form.account_id} disabled={busy} onChange={e => setForm({ ...form, account_id: e.target.value })}>
           {places.map(p => <MenuItem key={String(p.id)} value={p.id as number}>{String(p.name)}</MenuItem>)}
         </TextField>
-        <TextField type="date" label={l('Sana', 'Дата', 'Date')} value={form.refund_date} disabled={busy} onChange={e => setForm({ ...form, refund_date: e.target.value })} slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: tashkentToday() } }} />
+        <TextField required type="date" label={l('Sana', 'Дата', 'Date')} value={form.refund_date} disabled={busy} onChange={e => setForm({ ...form, refund_date: e.target.value })} slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: tashkentToday() } }} />
         <TextField required multiline minRows={2} label={l('Izoh (qanday qaytarildi)', 'Комментарий (как вернули)', 'Note (how it was paid)')} placeholder={l('Masalan: naqd berildi / kartaga o‘tkazildi', 'Например: выдано наличными / переведено на карту', 'E.g. paid in cash / sent to card')} value={form.note} disabled={busy} onChange={e => setForm({ ...form, note: e.target.value })} />
       </Stack></DialogContent>
       <DialogActions><Button disabled={busy} onClick={() => setForm(null)}>{l('Bekor qilish', 'Отмена', 'Cancel')}</Button>
