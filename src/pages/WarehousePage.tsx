@@ -75,6 +75,7 @@ export default function WarehousePage() {
   const [supplierOptions,setSupplierOptions] = useState<Row[]>([]);
   const [supplierId,setSupplierId] = useState('');
   const [invoiceAmount,setInvoiceAmount] = useState('');
+  const [invoiceReason,setInvoiceReason] = useState('');
   const [invoiceDate,setInvoiceDate] = useState('');
   const [invoice,setInvoice] = useState('');
   const [invoiceImage,setInvoiceImage]=useState('');
@@ -86,6 +87,9 @@ export default function WarehousePage() {
   const costKey = lines.map(line=>line.product?.id).filter(Boolean).join(',');
   useEffect(()=>{if(!receiptOpen||!costKey){setCosts(null);return;}let live=true;api.previousCosts(token,costKey.split(',').map(Number)).then(r=>{if(live)setCosts(r)}).catch(()=>{if(live)setCosts(null)});return()=>{live=false};},[token,receiptOpen,costKey]);
   const priceJump=(line:Line)=>{const prev=Number(costs?.costs?.[String(line.product?.id)]);const price=Number(line.unit_price);if(!(prev>0)||!(price>0))return null;const pct=Math.round(Math.abs(price-prev)/prev*1000)/10;return {prev,pct,over:pct>Number(costs?.threshold_percent??20)};};
+  // TZ v12 A4.1: the debt follows the lines; a different invoice total needs a reason.
+  const linesTotal = lines.reduce((sum,item)=>sum+Number(item.quantity||0)*(item.input_unit==='BLOCK'?Number(item.units_per_block||0):1)*Number(item.unit_price||0),0);
+  const invoiceDiffers = !!supplierId && invoiceAmount!=='' && Math.abs(Number(invoiceAmount)-linesTotal)>=0.005;
   const [detail,setDetail] = useState<Row | null>(null);
   const [order,setOrder] = useState<Row | null>(null);
   const [reverseId,setReverseId] = useState<number | null>(null);
@@ -179,7 +183,8 @@ export default function WarehousePage() {
         throw new ApiError('', new Set(ids).size !== ids.length ? 'WAREHOUSE_DUPLICATE_PRODUCT' : 'WAREHOUSE_INVALID_INPUT');
       }
       if (costs?.note_required && lines.some(item => priceJump(item)?.over && !item.price_note.trim())) throw new ApiError('', 'RECEIPT_PRICE_NOTE_REQUIRED');
-      await api.createReceipt(token,{supplier_name:supplier,supplier_id:supplierId?Number(supplierId):undefined,invoice_amount:supplierId?invoiceAmount:undefined,invoice_date:supplierId?invoiceDate:undefined,invoice_number:invoice,note,invoice_image_base64:invoiceImage||undefined,
+      if (invoiceDiffers && !invoiceReason.trim()) throw new ApiError('', 'RECEIPT_INVOICE_DIFFERENCE');
+      await api.createReceipt(token,{supplier_name:supplier,supplier_id:supplierId?Number(supplierId):undefined,invoice_amount:supplierId?invoiceAmount:undefined,invoice_date:supplierId?invoiceDate:undefined,invoice_difference_reason:invoiceDiffers?invoiceReason.trim():undefined,invoice_number:invoice,note,invoice_image_base64:invoiceImage||undefined,
         items:lines.map(item => ({product_id:item.product!.id,quantity:Number(item.quantity),location_id:Number(item.location_id),unit_price:item.unit_price,manufacture_date:item.manufacture_date||undefined,expiry_date:item.expiry_date,input_unit:item.input_unit,units_per_block:Number(item.units_per_block),batch_number:item.batch_number,price_note:item.price_note.trim()||undefined}))});
       setReceiptOpen(false);refresh();
     });
@@ -268,12 +273,13 @@ export default function WarehousePage() {
           <TextField select label={l('Yetkazib beruvchi','Поставщик','Supplier')} value={supplierId} onChange={e=>setSupplierId(e.target.value)}><MenuItem value="">{l('Ro‘yxatdan tashqari','Вне реестра','Unregistered supplier')}</MenuItem>{supplierOptions.filter(s=>s.is_active).map(s=><MenuItem key={s.id} value={String(s.id)}>{s.name}</MenuItem>)}</TextField>
           {!supplierId&&<TextField required label={l('Yetkazib beruvchi nomi','Название поставщика','Supplier name')} value={supplier} onChange={e => setSupplier(e.target.value)} />}
           {!!supplierId&&<><TextField required type="number" label={l('Nakladnoy jami summasi','Общая сумма накладной','Invoice total')} value={invoiceAmount} onChange={e=>setInvoiceAmount(e.target.value)}/><TextField required type="date" label={l('Nakladnoy sanasi','Дата накладной','Invoice date')} slotProps={{inputLabel:{shrink:true}}} value={invoiceDate} onChange={e=>setInvoiceDate(e.target.value)}/></>}
+          {invoiceDiffers&&<><Alert severity="warning">{l(`Nakladnoy summasi qatorlar yig‘indisidan farq qiladi: qatorlar ${number(linesTotal)}, nakladnoy ${number(invoiceAmount)}. Qarz qatorlar bo‘yicha yoziladi.`,`Сумма накладной отличается от суммы строк: строки ${number(linesTotal)}, накладная ${number(invoiceAmount)}. Долг считается по строкам.`,`Invoice total differs from the lines: lines ${number(linesTotal)}, invoice ${number(invoiceAmount)}. The debt follows the lines.`)}</Alert><TextField required label={l('Farq sababi','Причина разницы','Reason for the difference')} value={invoiceReason} onChange={e=>setInvoiceReason(e.target.value)}/></>}
           <TextField label={l('Nakladnoy raqami','Номер накладной','Invoice number')} value={invoice} onChange={e => setInvoice(e.target.value)} />
           <Button component="label" disabled={busy}>{l('Nakladnoy rasmini tanlash','Фото накладной','Choose invoice photo')}<input hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{const file=e.target.files?.[0];if(file)void run(async()=>setInvoiceImage(await prepareInvoiceImage(file)));e.target.value='';}}/></Button>
           {invoiceImage&&<Box><Box component="img" src={`data:image/png;base64,${invoiceImage}`} sx={{maxHeight:160,maxWidth:'100%'}}/><Button onClick={()=>setInvoiceImage('')}>{l('Rasmni olib tashlash','Удалить фото','Remove photo')}</Button></Box>}
           <TextField label={l('Izoh','Примечание','Note')} value={note} onChange={e => setNote(e.target.value)} />
           {lines.map((item,i) => <Box key={i} sx={{display:'grid',gridTemplateColumns:{xs:'1fr',md:'2fr 1fr 1fr auto'},gap:1,alignItems:'start'}}>
-            <ProductPicker token={token} value={item.product} label={productLabel} onChange={v => setLines(previous => previous.map((line,n) => n===i ? {...line,product:v} : line))} />
+            <Box><ProductPicker token={token} activeOnly={false} value={item.product} label={productLabel} onChange={v => setLines(previous => previous.map((line,n) => n===i ? {...line,product:v} : line))} />{(costs?.untracked as number[]|undefined)?.includes(Number(item.product?.id))&&<Typography variant="caption" color="warning.main">{l('Bu tovar partiya hisobiga o‘tmagan: avval Boshlang‘ich sanash qiling.','Товар не на партионном учёте: сначала сделайте начальный пересчёт.','This product is not on batch tracking yet: do its opening count first.')}</Typography>}</Box>
             <TextField required type="number" label={quantityLabel} value={item.quantity} onChange={e => setLines(previous => previous.map((line,n) => n===i ? {...line,quantity:e.target.value} : line))} />
             <TextField select required label={l('Manzil','Ячейка','Location')} value={item.location_id} onChange={e => setLines(previous => previous.map((line,n) => n===i ? {...line,location_id:e.target.value} : line))}>{locations.filter(location => location.is_active&&location.hierarchy_level==='BIN').map(location => <MenuItem key={location.id} value={String(location.id)}>{location.path||location.code}</MenuItem>)}</TextField>
             <TextField required type="number" label={l('Kirim narxi (1 dona)','Закупочная цена за штуку','Purchase price per piece')} value={item.unit_price} onChange={e=>setLines(v=>v.map((r,n)=>n===i?{...r,unit_price:e.target.value}:r))} color={priceJump(item)?.over?'warning':undefined} focused={priceJump(item)?.over||undefined}

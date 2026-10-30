@@ -15,6 +15,7 @@ export const updateOrderStatus = (token:string,id:number,data:Row) => apiRequest
 
 export const listProducts = (token:string, params:Row={}) => apiRequest<PageData>(`${m}/products${q(params)}`,{token}).then(r=>r.resultData);
 export const getProduct = (token:string,id:number) => apiRequest<Row>(`${m}/products/${id}`,{token}).then(r=>r.resultData);
+export const productBatchCost = (token:string,id:number) => apiRequest<Row>(`${m}/products/${id}/batch-cost`,{token}).then(r=>r.resultData?.batch_cost??null);
 export const updateProduct = (token:string,id:number,data:Row) => apiRequest<null>(`${m}/products/${id}`,{token,method:'PUT',body:JSON.stringify(data)});
 export const updateProductInline = (token:string,id:number,data:Row) => apiRequest<null>(`${m}/products/${id}`,{token,method:'PUT',showLoading:false,body:JSON.stringify(data)});
 export const deleteProduct = (token:string,id:number) => apiRequest<null>(`${m}/products/${id}`,{token,method:'DELETE'});

@@ -171,6 +171,7 @@ export function OrdersPage(){
 
 export function ProductsPage() {
   const [priceHistoryId,setPriceHistoryId]=useState<number|null>(null);
+  const [editBatchCost,setEditBatchCost]=useState<number|null>(null);
   const token = useToken();
   const [warehouseEnabled, setWarehouseEnabled] = useState<boolean | null>(null);
   useEffect(() => {
@@ -384,6 +385,7 @@ export function ProductsPage() {
       const detail = await api.getProduct(token, id);
       const product = { ...detail.product, images: detail.images ?? [] };
       setEdit(product);
+      setEditBatchCost(null); void api.productBatchCost(token, id).then(cost => setEditBatchCost(cost == null ? null : Number(cost))).catch(() => undefined);
       setEditOriginal({ ...product, images: [...(product.images ?? [])] }); setPriceReasonMissing(false);
       setEditImages([]);
       setEditDeletedImageIds([]);
@@ -436,6 +438,7 @@ export function ProductsPage() {
 
   const saveEdit = async () => {
     if (!edit || !editOriginal || editSaving) return;
+    if (editOriginal.is_active && !edit.is_active && Number(editOriginal.stock_quantity) > 0 && !await confirm({ danger: true, message: stockWarning(editOriginal.stock_quantity) })) return;
     setEditError(null);
     setEditSaving(true);
 
@@ -586,9 +589,12 @@ export function ProductsPage() {
     setEditDeletedImageIds((current) => current.includes(imageId) ? current : [...current, imageId]);
   };
 
+  // TZ v12 B4: a product with stock going inactive disappears from sale.
+  const stockWarning = (stock: unknown) => l(`Bu mahsulotning omborda ${stock} dona qoldig‘i bor. Nofaol qilsangiz, sotuvdan chiqadi. Davom etasizmi?`, `На складе ${stock} шт. этого товара. Если отключить, он исчезнет из продажи. Продолжить?`, `This product has ${stock} pieces in stock. If it goes inactive it leaves sale. Continue?`);
   const toggleProductActive = async (row: Row) => {
     const productId = Number(row.id);
     const nextActive = !Boolean(row.is_active);
+    if (!nextActive && Number(row.stock_quantity) > 0 && !await confirm({ danger: true, message: stockWarning(row.stock_quantity) })) return;
     setActionError(null);
     setProductActionId(productId);
     try {
@@ -722,7 +728,7 @@ export function ProductsPage() {
         {editField('price', l('Narx', 'Цена', 'Price'), 'number', true)}{editField('subscription_price', l('Obuna narxi', 'Цена подписки', 'Subscription price'), 'number')}
         {/* Right under the prices, so it is found when Q-10 asks for it. */}
         <TextField id="price-change-reason" sx={{ gridColumn: '1 / -1' }} multiline error={priceReasonMissing} label={l('Narx o‘zgarishi sababi','Причина изменения цены','Reason for price change')} helperText={priceReasonMissing?l('Narx o‘zgargani uchun sababini yozing.','Цена изменена — укажите причину.','The price changed — enter the reason.'):l('Narxni o‘zgartirsangiz, sababini yozing.','Если меняете цену, укажите причину.','If you change a price, enter the reason.')} value={edit?.price_change_reason||''} onChange={e=>{setPriceReasonMissing(false);setEdit(v=>v&&({...v,price_change_reason:e.target.value}));}}/>
-        <ProductMetadataFields value={edit??{}} onChange={(key,value)=>setEdit(v=>v&&({...v,[key]:value}))}/>
+        <ProductMetadataFields value={edit??{}} batchCost={editBatchCost} onChange={(key,value)=>setEdit(v=>v&&({...v,[key]:value}))}/>
         <Button disabled={!edit?.id} onClick={()=>setPriceHistoryId(edit!.id)}>{l('Narxlar tarixi','История цен','Price history')}</Button>
         {editField('stock_quantity', l('Ombor', 'Остаток', 'Stock'), 'number')}{editField('vat_percent', 'VAT %', 'number')}
         {editField('sku', 'SKU')}{editField('barcode', l('Shtrix kod', 'Штрихкод', 'Barcode'))}{editField('weight_gram', l('Og‘irlik (g)', 'Вес (г)', 'Weight (g)'), 'number')}

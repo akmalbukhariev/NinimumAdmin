@@ -97,6 +97,7 @@ const TEXT: Record<string, T> = {
   WAREHOUSE_NOT_OWNER: ['Bu buyurtma boshqa xodimga biriktirilgan.', 'Заказ закреплён за другим сотрудником.', 'This order belongs to another worker.'],
   WAREHOUSE_NOT_READY: ['Buyurtma hali qadoqlanmagan.', 'Заказ ещё не упакован.', 'The order is not packed yet.'],
   WAREHOUSE_ORDER_UNAVAILABLE: ['Buyurtma bekor qilingan, to‘lov qaytarilgan yoki kuryerga berilgan.', 'Заказ отменён, оплата возвращена или передан курьеру.', 'The order was cancelled, refunded or handed to a courier.'],
+  RECEIPT_INVOICE_DIFFERENCE: ['Nakladnoy summasi qatorlar yig‘indisiga teng emas. Farq sababini yozing.', 'Сумма накладной не равна сумме строк. Укажите причину разницы.', 'The invoice total differs from the lines. Enter the reason.'],
   WAREHOUSE_PASSWORD_SHORT: ['Parolni kiriting.', 'Введите пароль.', 'Enter a password.'],
   WAREHOUSE_PRODUCT_INACTIVE: ['Mahsulot nofaol.', 'Товар неактивен.', 'The product is inactive.'],
   WAREHOUSE_RECEIPT_METADATA_REQUIRED: ['Har bir qatorda kirim narxi, yaroqlilik sanasi va miqdorni tekshiring.', 'Проверьте цену, срок годности и количество в каждой строке.', 'Check price, expiry and quantity on every line.'],

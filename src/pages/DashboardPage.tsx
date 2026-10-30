@@ -32,7 +32,8 @@ import { useAuth } from '../auth/AuthProvider';
 import { can } from '../auth/permissions';
 import { ProblemSummaryCard } from '../components/OrderProblems';
 import StatCard from '../components/StatCard';
-import { dateTime, useEnumLabel } from '../components/AdminCommon';
+import { dateTime, useEnumLabel, useL } from '../components/AdminCommon';
+import { apiRequest } from '../api/client';
 import { useLanguage } from '../i18n/LanguageProvider';
 
 const statusColors: Record<string, { bg: string; color: string }> = {
@@ -67,6 +68,16 @@ function groupStatuses(statuses: DashboardOrderStatus[]) {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { accessToken, logout, admin } = useAuth();
+  const l = useL();
+  // TZ v12 A4.2: products still outside batch tracking have only an estimated cost.
+  const [legacyProducts, setLegacyProducts] = useState(0);
+  useEffect(() => {
+    if (!accessToken || !can(admin, 'inventory.view')) return;
+    let live = true;
+    apiRequest<{ legacy_products?: number }>('/ninimum/api/v1/admin/warehouse/inventory/status', { token: accessToken, showLoading: false })
+      .then(r => { if (live) setLegacyProducts(Number(r.resultData?.legacy_products ?? 0)); }).catch(() => undefined);
+    return () => { live = false; };
+  }, [accessToken, admin]);
   const { t, locale, language } = useLanguage();
   const enumLabel = useEnumLabel();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -173,6 +184,7 @@ export default function DashboardPage() {
       </Box>
 
       <ProblemSummaryCard/>
+      {legacyProducts > 0 && <Alert severity="warning" sx={{ mt: 2.5 }} action={<Button color="inherit" size="small" onClick={() => navigate('/inventory')}>{l('Inventarizatsiya', 'Инвентаризация', 'Inventory')}</Button>}>{l(`Partiya hisobiga o‘tmagan: ${legacyProducts} tovar. Ularda tannarx taxminiy.`, `Не на партионном учёте: ${legacyProducts} товаров. Их себестоимость приблизительная.`, `Not on batch tracking: ${legacyProducts} products. Their cost is an estimate.`)}</Alert>}
       {error && (
         <Alert severity="error" sx={{ mt: 2.5 }} action={<Button color="inherit" size="small" onClick={() => void loadDashboard()}>{t('common.retry')}</Button>}>
           {t('dashboard.error')}
