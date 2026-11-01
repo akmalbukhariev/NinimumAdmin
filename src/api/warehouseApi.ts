@@ -15,7 +15,7 @@ export const receipts = (token: string, page: number) => get<PageData>(token, `/
 export const previousCosts = (token: string, ids: number[]) => get<Row>(token, `/receipts/previous-costs?product_ids=${ids.join(',')}`);
 export const receipt = (token: string, id: number) => get<Row>(token, `/receipts/${id}`);
 export const createReceipt = (token: string, body: Row) => post<number>(token, '/receipts', body);
-export const postReceipt = (token: string, id: number, counts:Row[]) => post<number>(token, `/receipts/${id}/post`,{counts});
+export const postReceipt = (token: string, id: number, counts:Row[], shortage:Row={}) => post<number>(token, `/receipts/${id}/post`,{counts,...shortage});
 export const reverseReceipt = (token: string, id: number, reason: string) => post<number>(token, `/receipts/${id}/reverse`, {reason});
 export const movements = (token: string, page: number, product: string, dateFrom = '', dateTo = '') => get<PageData>(token, `/movements?page=${page}&page_size=20${product ? `&product_id=${encodeURIComponent(product)}` : ''}${dateFrom ? `&date_from=${encodeURIComponent(dateFrom)}` : ''}${dateTo ? `&date_to=${encodeURIComponent(dateTo)}` : ''}`);
 export const preparation = (token: string, page: number) => get<PageData>(token, `/preparation?page=${page}&page_size=20`);

@@ -7,7 +7,7 @@ export const pagePermissions: Record<string, string> = {
   '/dashboard': 'dashboard.view', '/problems': 'problems.view', '/refunds': 'problems.view', '/orders': 'orders.view', '/products': 'products.view',
   '/categories': 'categories.view', '/customers': 'customers.view', '/subscriptions': 'subscriptions.view',
   '/warehouse': 'warehouse.view', '/inventory': 'inventory.view', '/suppliers': 'suppliers.view', '/delivery': 'delivery.view',
-  '/reviews': 'reviews.view', '/promotions': 'promotions.view', '/finance': 'money.view',
+  '/reviews': 'reviews.view', '/promotions': 'promotions.view', '/finance': 'money.view|money.count',
   // Reports: open when the user may see at least one report; each report checks its own permission.
   '/reports': 'warehouse.view|suppliers.view|orders.view|money.view|subscriptions.view',
 };

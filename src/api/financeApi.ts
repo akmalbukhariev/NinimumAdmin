@@ -18,5 +18,8 @@ export const reverseDocument = (token: string, id: number, reason: string) => se
 export const documentPhoto = (token: string, id: number) => get<Row>(token, `/documents/${id}/photo`);
 export const counts = (token: string) => get<Row[]>(token, '/counts');
 export const addCount = (token: string, body: Row) => send<Row>(token, '/counts', 'POST', body);
+export const countPlaces = (token: string) => get<Row[]>(token, '/count-places');
+export const approveCount = (token: string, id: number) => send<Row[]>(token, `/counts/${id}/approve`, 'POST', {});
+export const voidCount = (token: string, id: number, reason: string) => send<Row[]>(token, `/counts/${id}/void`, 'POST', { reason });
 export const movement = (token: string, from: string, to: string) => get<Row>(token, `/movement${q({ from, to })}`);
 export const monthly = (token: string, month: string) => get<Row>(token, `/monthly${q({ month })}`);

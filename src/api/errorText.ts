@@ -36,6 +36,7 @@ const TEXT: Record<string, T> = {
   REFUND_NOT_PENDING: ['Bu buyurtma bo‘yicha qaytarish kutilmayapti.', 'По этому заказу возврат не ожидается.', 'No refund is pending for this order.'],
   RULE_INVALID_VALUE: ['Qiymat 1 dan 100 gacha bo‘lishi kerak.', 'Значение должно быть от 1 до 100.', 'The value must be 1–100.'],
   RULE_NOT_SWITCHABLE: ['Bu qoidani o‘chirib-yoqib bo‘lmaydi.', 'Это правило нельзя переключать.', 'This rule can’t be switched.'],
+  REFERRAL_PLAN_REQUIRED: ['Bepul oy uchun tarifni tanlang.', 'Выберите тариф на бесплатный месяц.', 'Choose the tariff for the free month.'],
   PERIOD_CLOSED: ['Bu sana yopilgan davrga tushadi (Sozlamalar → Qoidalar → Davr yopish).', 'Эта дата в закрытом периоде (Настройки → Правила → Закрытие периода).', 'This date is in a closed period.'],
   PERIOD_FUTURE_DATE: ['Kelajakdagi sanagacha yopib bo‘lmaydi.', 'Нельзя закрыть период будущей датой.', 'You can’t close up to a future date.'],
   PERIOD_REASON_REQUIRED: ['Davrni ochish uchun sabab yozing.', 'Укажите причину открытия периода.', 'Enter a reason to reopen the period.'],

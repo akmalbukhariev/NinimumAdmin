@@ -16,13 +16,15 @@ const day = (v: unknown) => { const [y, m, d] = String(v || '').slice(0, 10).spl
 
 export default function FinancePage() {
   const { accessToken, admin } = useAuth(), token = accessToken!, l = useL();
-  const editable = can(admin, 'money.edit'), owner = admin?.role === 'SUPER_ADMIN';
+  const editable = can(admin, 'money.edit'), owner = admin?.role === 'SUPER_ADMIN', seesMoney = can(admin, 'money.view'), canApprove = can(admin, 'approve');
   const [tab, setTab] = useState(0), [error, setError] = useState<string | null>(null), [busy, setBusy] = useState(false);
   const [accounts, setAccounts] = useState<Row[] | null>(null), [types, setTypes] = useState<Row[]>([]);
   const message = (e: unknown) => {
     const code = e instanceof Error ? e.message : '';
     const known: Record<string, [string, string, string]> = {
       PERIOD_CLOSED: ['Bu sana yopilgan davrga tushadi (Sozlamalar → Qoidalar → Davr yopish).', 'Эта дата в закрытом периоде (Настройки → Правила → Закрытие периода).', 'This date is in a closed period (Settings → Rules → Period closing).'],
+      CASH_COUNT_REASON_REQUIRED: ['Sanalgan summa tizimnikidan farq qiladi. Farq sababini yozing.', 'Сумма отличается от системы. Укажите причину разницы.', 'The amount differs from the system. Enter the reason.'],
+      CASH_COUNT_SEPARATE_APPROVER: ['Sanashni boshqa xodim tasdiqlashi kerak.', 'Пересчёт должен подтвердить другой сотрудник.', 'Another employee must approve the count.'],
       FINANCE_PHOTO_REQUIRED: ['Xarajatga chek rasmini qo‘shing.', 'Добавьте фото чека.', 'Add a receipt photo.'],
       FINANCE_INVALID_AMOUNT: ['Summani tekshiring (0 dan katta, 2 xonadan ko‘p kasr yo‘q).', 'Проверьте сумму (больше 0, не более 2 знаков после запятой).', 'Check the amount (above 0, at most 2 decimals).'],
       FINANCE_FUTURE_DATE: ['Sana kelajakda bo‘lishi mumkin emas.', 'Дата не может быть в будущем.', 'The date can’t be in the future.'],
@@ -35,45 +37,67 @@ export default function FinancePage() {
   };
   const run = async (action: () => Promise<void>) => { if (busy) return; setBusy(true); setError(null); try { await action(); } catch (e) { setError(message(e)); } finally { setBusy(false); } };
   const loadAccounts = useCallback(() => api.accounts(token).then(setAccounts).catch(e => setError(message(e))), [token]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { void loadAccounts(); api.expenseTypes(token).then(setTypes).catch(() => setTypes([])); }, [token, loadAccounts]);
+  useEffect(() => { if (!seesMoney) return; void loadAccounts(); api.expenseTypes(token).then(setTypes).catch(() => setTypes([])); }, [token, loadAccounts, seesMoney]);
   const kindLabel = (k: unknown) => ({ EXPENSE: l('Xarajat', 'Расход', 'Expense'), INCOME: l('Kirim', 'Поступление', 'Income'), TRANSFER: l('O‘tkazma', 'Перевод', 'Transfer') } as Record<string, string>)[String(k)] || String(k);
 
+  // TZ v12 B3: money.count alone: the count form and own counts, no balances.
+  if (!seesMoney) return <><PageTitle title={l('Kassani sanash', 'Пересчёт кассы', 'Cash count')} /><ErrorNotice message={error} sx={{mb:2}} onClose={()=>setError(null)}/><CashCount token={token} seesMoney={false} canApprove={canApprove} busy={busy} run={run} /></>;
   return <>
     <PageTitle title={l('Pul', 'Деньги', 'Money')} />
     <ErrorNotice message={error} sx={{mb:2}} onClose={()=>setError(null)}/>
     <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" sx={{ mb: 2 }}>
       <Tab label={l('Kassa va hisoblar', 'Касса и счета', 'Cash and accounts')} /><Tab label={l('Hujjatlar', 'Документы', 'Documents')} />
-      <Tab label={l('Pul harakati', 'Движение денег', 'Money movement')} /><Tab label={l('Oylik natija', 'Итог месяца', 'Monthly result')} />
+      <Tab label={l('Pul harakati', 'Движение денег', 'Money movement')} /><Tab label={l('Oylik natija', 'Итог месяца', 'Monthly result')} /><Tab label={l('Kassani sanash', 'Пересчёт кассы', 'Cash count')} />
     </Tabs>
     {tab === 0 && <Balances token={token} accounts={accounts} editable={editable} busy={busy} run={run} reload={loadAccounts} />}
     {tab === 1 && <Documents token={token} accounts={accounts || []} types={types} setTypes={setTypes} editable={editable} owner={owner} busy={busy} run={run} kindLabel={kindLabel} reload={loadAccounts} />}
     {tab === 2 && <Movement token={token} run={run} />}
     {tab === 3 && <Monthly token={token} run={run} />}
+    {tab === 4 && <CashCount token={token} seesMoney canApprove={canApprove} busy={busy} run={run} />}
   </>;
 }
 
 type Run = (action: () => Promise<void>) => Promise<void>;
 
+// TZ v12 B3: a difference needs a reason and another person's approval. Someone with money.count only never sees the system total.
+function CashCount({ token, seesMoney, canApprove, busy, run }: { token: string; seesMoney: boolean; canApprove: boolean; busy: boolean; run: Run }) {
+  const l = useL();
+  const [places, setPlaces] = useState<Row[]>([]), [form, setForm] = useState<Row>({ account_id: '', counted_amount: '', note: '' }), [needReason, setNeedReason] = useState(false), [result, setResult] = useState<Row | null>(null), [counts, setCounts] = useState<Row[]>([]), [voiding, setVoiding] = useState<Row | null>(null), [reason, setReason] = useState('');
+  const load = useCallback(() => api.counts(token).then(setCounts).catch(() => setCounts([])), [token]);
+  useEffect(() => { void load(); api.countPlaces(token).then(rows => { setPlaces(rows); setForm(f => f.account_id ? f : { ...f, account_id: String(rows[0]?.id ?? '') }); }).catch(() => setPlaces([])); }, [token, load]);
+  const save = () => run(async () => {
+    setResult(null);
+    try { setResult(await api.addCount(token, form)); } catch (e) { if (e instanceof Error && (e.message === 'CASH_COUNT_REASON_REQUIRED' || (e as { resultCode?: string }).resultCode === 'CASH_COUNT_REASON_REQUIRED')) setNeedReason(true); throw e; }
+    setNeedReason(false); setForm({ ...form, counted_amount: '', note: '' }); await load();
+  });
+  const status = (c: Row) => ({ PENDING: l('Tasdiq kutilmoqda', 'Ждёт подтверждения', 'Waiting for approval'), APPROVED: l('Tasdiqlandi', 'Подтверждён', 'Approved'), VOIDED: l('Bekor qilingan', 'Отменён', 'Cancelled'), POSTED: Number(c.difference) === 0 ? l('Mos', 'Совпало', 'Matches') : l('Yozilgan', 'Записан', 'Recorded') } as Record<string, string>)[String(c.status)] || String(c.status);
+  return <>
+    <Panel sx={{ p: 2, mb: 2 }}><Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+      <TextField required select size="small" label={l('Joy', 'Место', 'Place')} value={form.account_id} onChange={e => setForm({ ...form, account_id: e.target.value })} sx={{ minWidth: 200 }}>{places.map(a => <MenuItem key={a.id} value={String(a.id)}>{a.name}</MenuItem>)}</TextField>
+      <TextField required size="small" type="number" label={l('Sanalgan summa', 'Посчитанная сумма', 'Counted amount')} value={form.counted_amount} onChange={e => setForm({ ...form, counted_amount: e.target.value })} />
+      <TextField required={needReason} size="small" label={needReason ? l('Farq sababi', 'Причина разницы', 'Reason for the difference') : l('Izoh', 'Примечание', 'Note')} value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} />
+      <Button variant="contained" disabled={busy || form.counted_amount === '' || (needReason && !String(form.note).trim())} onClick={() => void save()}>{l('Saqlash', 'Сохранить', 'Save')}</Button>
+    </Stack>{result && <Alert severity={result.status === 'POSTED' ? 'success' : 'warning'} sx={{ mt: 2 }}>{result.status === 'POSTED' ? l('Saqlandi.', 'Сохранено.', 'Saved.') : l('Saqlandi. Farq bor, tasdiq kutilmoqda.', 'Сохранено. Есть разница, ждёт подтверждения.', 'Saved. There is a difference, waiting for approval.')}{seesMoney && result.system_amount != null && ` ${l('Tizimda', 'По системе', 'System')}: ${money(result.system_amount)} · ${l('Sanaldi', 'Посчитано', 'Counted')}: ${money(result.counted_amount)} · ${l('Farq', 'Разница', 'Difference')}: ${money(result.difference)}`}</Alert>}</Panel>
+    <TablePanel><Table size="small"><TableHead><TableRow><TableCell>{l('Sana', 'Дата', 'Date')}</TableCell><TableCell>{l('Joy', 'Место', 'Place')}</TableCell>{seesMoney && <TableCell>{l('Tizimda', 'По системе', 'System')}</TableCell>}<TableCell>{l('Sanaldi', 'Посчитано', 'Counted')}</TableCell>{seesMoney && <TableCell>{l('Farq', 'Разница', 'Difference')}</TableCell>}<TableCell>{l('Holat', 'Статус', 'Status')}</TableCell><TableCell>{l('Kim', 'Кто', 'Who')}</TableCell>{canApprove && <TableCell />}</TableRow></TableHead>
+      <TableBody>{counts.map(c => <TableRow key={c.id}><TableCell>{day(c.count_date)}</TableCell><TableCell>{c.account_name}</TableCell>{seesMoney && <TableCell>{money(c.system_amount)}</TableCell>}<TableCell>{money(c.counted_amount)}</TableCell>{seesMoney && <TableCell sx={{ color: Number(c.difference) === 0 ? undefined : 'warning.main', fontWeight: 700 }}>{money(c.difference)}</TableCell>}
+        <TableCell>{status(c)}{c.approved_by && <Typography variant="caption" sx={{ display: 'block' }}>{c.approved_by}</Typography>}{c.void_reason && <Typography variant="caption" sx={{ display: 'block' }}>{c.voided_by}: {c.void_reason}</Typography>}</TableCell>
+        <TableCell>{c.created_by}{c.note && <Typography variant="caption" sx={{ display: 'block' }}>{c.note}</Typography>}</TableCell>
+        {canApprove && <TableCell sx={{ whiteSpace: 'nowrap' }}>{c.status === 'PENDING' && <Button size="small" disabled={busy} onClick={() => void run(async () => { setCounts(await api.approveCount(token, c.id)); })}>{l('Tasdiqlash', 'Подтвердить', 'Approve')}</Button>}{c.status !== 'VOIDED' && <Button size="small" color="error" disabled={busy} onClick={() => { setReason(''); setVoiding(c); }}>{l('Bekor qilish', 'Отменить', 'Cancel')}</Button>}</TableCell>}</TableRow>)}</TableBody></Table>
+      {counts.length === 0 && <Typography sx={{ p: 2 }}>{l('Hali sanash yo‘q.', 'Пересчётов ещё нет.', 'No counts yet.')}</Typography>}</TablePanel>
+    <Dialog open={!!voiding} onClose={() => !busy && setVoiding(null)} fullWidth maxWidth="xs"><DialogTitle>{l('Sanashni bekor qilish', 'Отмена пересчёта', 'Cancel the count')}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
+      {voiding?.status === 'APPROVED' && <Alert severity="warning">{l('Kamomad yoki ortiqcha hujjati ham bekor qilinadi.', 'Документ недостачи или излишка тоже будет отменён.', 'Its shortage or surplus document is cancelled too.')}</Alert>}
+      <TextField required multiline label={l('Sabab', 'Причина', 'Reason')} value={reason} onChange={e => setReason(e.target.value)} />
+    </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={() => setVoiding(null)}>{l('Yopish', 'Закрыть', 'Close')}</Button><Button color="error" variant="contained" disabled={busy || !reason.trim()} onClick={() => void run(async () => { setCounts(await api.voidCount(token, voiding!.id, reason.trim())); setVoiding(null); })}>{l('Bekor qilish', 'Отменить', 'Cancel')}</Button></DialogActions></Dialog>
+  </>;
+}
+
 function Balances({ token, accounts, editable, busy, run, reload }: { token: string; accounts: Row[] | null; editable: boolean; busy: boolean; run: Run; reload: () => void }) {
   const l = useL();
-  const [opening, setOpening] = useState<Row | null>(null), [count, setCount] = useState<Row>({ account_id: '', counted_amount: '', note: '' }), [result, setResult] = useState<Row | null>(null), [counts, setCounts] = useState<Row[]>([]);
-  const loadCounts = useCallback(() => api.counts(token).then(setCounts).catch(() => setCounts([])), [token]);
-  useEffect(() => { void loadCounts(); }, [loadCounts]);
-  useEffect(() => { if (!count.account_id && accounts?.length) setCount(c => ({ ...c, account_id: String(accounts.find(a => a.code === 'CASH')?.id ?? accounts[0].id) })); }, [accounts, count.account_id]);
+  const [opening, setOpening] = useState<Row | null>(null);
   return <LoadState loading={accounts === null} error={null} onRetry={reload}>
     <TablePanel><Table><TableHead><TableRow><TableCell>{l('Joy', 'Место', 'Place')}</TableCell><TableCell>{l('Boshlang‘ich qoldiq', 'Начальный остаток', 'Opening balance')}</TableCell><TableCell>{l('Hozirgi qoldiq', 'Текущий остаток', 'Current balance')}</TableCell><TableCell /></TableRow></TableHead>
       <TableBody>{accounts?.map(a => <TableRow key={a.id}><TableCell>{a.name}</TableCell><TableCell>{a.opening_date ? `${money(a.opening_balance)} · ${day(a.opening_date)}` : '—'}</TableCell><TableCell sx={{ fontWeight: 700 }}>{money(a.balance)}</TableCell>
         <TableCell>{editable && <Button size="small" onClick={() => setOpening({ id: a.id, name: a.name, opening_balance: a.opening_balance ?? 0, opening_date: a.opening_date || tashkentToday() })}>{l('Boshlang‘ich qoldiq', 'Начальный остаток', 'Opening balance')}</Button>}</TableCell></TableRow>)}</TableBody></Table></TablePanel>
-    <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>{l('Kassani sanash', 'Пересчёт кассы', 'Cash count')}</Typography>
-    {editable && <Panel sx={{ p: 2, mb: 2 }}><Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-      <TextField required select size="small" label={l('Joy', 'Место', 'Place')} value={count.account_id} onChange={e => setCount({ ...count, account_id: e.target.value })} sx={{ minWidth: 200 }}>{accounts?.map(a => <MenuItem key={a.id} value={String(a.id)}>{a.name}</MenuItem>)}</TextField>
-      <TextField required size="small" type="number" label={l('Sanalgan summa', 'Посчитанная сумма', 'Counted amount')} value={count.counted_amount} onChange={e => setCount({ ...count, counted_amount: e.target.value })} />
-      <TextField size="small" label={l('Izoh', 'Примечание', 'Note')} value={count.note} onChange={e => setCount({ ...count, note: e.target.value })} />
-      <Button variant="contained" disabled={busy || count.counted_amount === ''} onClick={() => void run(async () => { setResult(await api.addCount(token, count)); setCount({ ...count, counted_amount: '', note: '' }); await loadCounts(); })}>{l('Saqlash', 'Сохранить', 'Save')}</Button>
-    </Stack>{result && <Alert severity={Number(result.difference) === 0 ? 'success' : 'warning'} sx={{ mt: 2 }}>{l('Tizimda', 'По системе', 'System')}: {money(result.system_amount)} · {l('Sanaldi', 'Посчитано', 'Counted')}: {money(result.counted_amount)} · {l('Farq', 'Разница', 'Difference')}: {money(result.difference)}</Alert>}</Panel>}
-    <TablePanel><Table size="small"><TableHead><TableRow><TableCell>{l('Sana', 'Дата', 'Date')}</TableCell><TableCell>{l('Joy', 'Место', 'Place')}</TableCell><TableCell>{l('Tizimda', 'По системе', 'System')}</TableCell><TableCell>{l('Sanaldi', 'Посчитано', 'Counted')}</TableCell><TableCell>{l('Farq', 'Разница', 'Difference')}</TableCell><TableCell>{l('Kim', 'Кто', 'Who')}</TableCell></TableRow></TableHead>
-      <TableBody>{counts.map(c => <TableRow key={c.id}><TableCell>{day(c.count_date)}</TableCell><TableCell>{c.account_name}</TableCell><TableCell>{money(c.system_amount)}</TableCell><TableCell>{money(c.counted_amount)}</TableCell><TableCell sx={{ color: Number(c.difference) === 0 ? undefined : 'warning.main', fontWeight: 700 }}>{money(c.difference)}</TableCell><TableCell>{c.created_by}{c.note && <Typography variant="caption" sx={{ display: 'block' }}>{c.note}</Typography>}</TableCell></TableRow>)}</TableBody></Table>
-      {counts.length === 0 && <Typography sx={{ p: 2 }}>{l('Hali sanash yo‘q.', 'Пересчётов ещё нет.', 'No counts yet.')}</Typography>}</TablePanel>
     <Dialog open={!!opening} onClose={() => !busy && setOpening(null)} fullWidth maxWidth="xs"><DialogTitle>{opening?.name}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
       <Alert severity="info">{l('Shu kun boshidagi qoldiq. Undan oldingi harakatlar hisobga olinmaydi.', 'Остаток на начало этого дня. Более ранние движения не учитываются.', 'The balance at the start of this day. Earlier movements are not counted.')}</Alert>
       <TextField required type="number" label={l('Summa', 'Сумма', 'Amount')} value={opening?.opening_balance ?? ''} onChange={e => setOpening(o => o && { ...o, opening_balance: e.target.value })} />
