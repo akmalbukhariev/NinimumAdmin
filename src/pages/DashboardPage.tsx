@@ -52,13 +52,15 @@ function normalizeNumber(value: unknown): number {
 }
 
 function groupStatuses(statuses: DashboardOrderStatus[]) {
-  const grouped = { preparing: 0, delivered: 0, onTheWay: 0, cancelled: 0 };
+  const grouped = { preparing: 0, delivered: 0, onTheWay: 0, cancelled: 0, unpaid: 0 };
 
   statuses.forEach((item) => {
     const count = normalizeNumber(item.count);
     if (item.status === 'DELIVERED') grouped.delivered += count;
     else if (item.status === 'ON_THE_WAY') grouped.onTheWay += count;
     else if (item.status === 'CANCELLED') grouped.cancelled += count;
+    // TZ v13 item 4: not paid yet = not in preparation; shown apart and left out of the chart.
+    else if (item.status === 'UNPAID') grouped.unpaid += count;
     else grouped.preparing += count;
   });
 
@@ -267,6 +269,7 @@ export default function DashboardPage() {
                   [t('dashboard.status.delivered'), '#7CB518', groupedStatuses.delivered],
                   [t('dashboard.status.onTheWay'), '#3D7CF4', groupedStatuses.onTheWay],
                   [t('dashboard.status.cancelled'), '#D9D9D9', groupedStatuses.cancelled],
+                  ...(groupedStatuses.unpaid ? [[l('To‘lanmagan','Не оплачен','Not paid'), '#F2C94C', groupedStatuses.unpaid]] : []),
                 ].map(([label, color, count]) => (
                   <Box key={String(label)} sx={{display:"flex",alignItems:"center",gap:1}}>
                     <Box sx={{ width: 8, height: 8, borderRadius: 99, bgcolor: String(color) }} />

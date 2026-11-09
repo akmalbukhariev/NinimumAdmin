@@ -67,6 +67,13 @@ export function useEnumLabel() {
   };
 }
 
+/** TZ v13 item 1: true when the signed-in admin may change things on the current page (owner, or "edit" on its area). */
+export function useCanEdit(): boolean {
+  const { admin } = useAuth(), { pathname } = useLocation();
+  const view = pagePermissions[pathname];
+  return !view || view.split('|').some(v => can(admin, v.replace(/\.view$/, '.edit')));
+}
+
 export function PageTitle({ title, subtitle: _subtitle, actionLabel, onAction }: { title: string; subtitle?: string; actionLabel?: string; onAction?: () => void }) {
   // M14: the add/create button needs edit rights on this page's area; view-only staff don't see it.
   const { admin } = useAuth(), { pathname } = useLocation();

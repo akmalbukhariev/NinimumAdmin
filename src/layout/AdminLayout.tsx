@@ -6,6 +6,7 @@ import {
   Inventory2Rounded,
   LocalOfferRounded,
   LogoutRounded,
+  KeyRounded,
   MenuRounded,
   NotificationsNoneRounded,
   PeopleAltRounded,
@@ -43,6 +44,7 @@ import { API_ACTIVITY_EVENT } from '../api/client';
 import { ProblemBell } from '../components/OrderProblems';
 import { useL } from '../components/AdminCommon';
 import { staffRoleLabel } from '../components/StaffAccess';
+import { OwnPasswordDialog } from '../components/AdminAccount';
 import LanguageSelector from '../components/LanguageSelector';
 import { useLanguage } from '../i18n/LanguageProvider';
 import type { TranslationKey } from '../i18n/translations';
@@ -80,7 +82,8 @@ export default function AdminLayout() {
   const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const { admin, logout } = useAuth();
+  const { admin, logout, accessToken } = useAuth();
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const l = useL();
   const { t } = useLanguage();
   const [backendBusy, setBackendBusy] = useState(false);
@@ -246,11 +249,20 @@ export default function AdminLayout() {
           <Avatar onClick={handleProfileClick} sx={{ width: { xs: 36, sm: 38 }, height: { xs: 36, sm: 38 }, bgcolor: '#22292F', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{initials}</Avatar>
 
           <Menu anchorEl={profileAnchor} open={Boolean(profileAnchor)} onClose={() => setProfileAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
+            <MenuItem disabled sx={{ opacity: '1!important', display: 'block' }}>
+              <Typography sx={{ fontSize: 13.5, fontWeight: 750 }}>{admin?.name || admin?.login_id}</Typography>
+              <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>Login: {admin?.login_id} · {staffRoleLabel(l, admin?.staff_role, admin?.role)}</Typography>
+            </MenuItem>
+            <MenuItem onClick={() => { setProfileAnchor(null); setPasswordOpen(true); }}>
+              <ListItemIcon><KeyRounded fontSize="small" /></ListItemIcon>
+              {l('Parolni o‘zgartirish', 'Сменить пароль', 'Change password')}
+            </MenuItem>
             <MenuItem onClick={handleLogout}>
               <ListItemIcon><LogoutRounded fontSize="small" /></ListItemIcon>
               {t('common.logout')}
             </MenuItem>
           </Menu>
+          {passwordOpen && accessToken && <OwnPasswordDialog token={accessToken} onClose={() => setPasswordOpen(false)} />}
         </Box>
 
         <Box component="main" sx={{ p: { xs: 1.5, sm: 2.25, md: 3.5 }, pb: { xs: 5, md: 3.5 }, maxWidth: 1600, mx: 'auto', width: '100%', minWidth: 0 }}><Outlet /></Box>

@@ -45,7 +45,10 @@ function DateField({ type, value, onChange, slotProps, ...props }: TextFieldProp
     ? (/^\d{4}-\d{2}/.test(iso) ? `${MONTHS[language][Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}` : '')
     : (/^\d{4}-\d{2}-\d{2}/.test(iso) ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}` : '');
   const type8 = (text: string) => {
-    const digits = text.replace(/\D/g, '').slice(0, 8);
+    let digits = text.replace(/\D/g, '');
+    // TZ v13: typing into a field that already holds a full date starts a new date instead of being ignored.
+    if (digits.length > 8) digits = digits.slice(8);
+    digits = digits.slice(0, 8);
     if (!digits) { setDraft(null); send(''); return; }
     const d = digits.slice(0, 2), m = digits.slice(2, 4), y = digits.slice(4);
     if (digits.length === 8 && realDate(Number(y), Number(m), Number(d))) { setDraft(null); send(`${y}-${m}-${d}`); return; }
