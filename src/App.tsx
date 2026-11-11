@@ -10,6 +10,7 @@ import SuppliersPage from './pages/SuppliersPage';
 import FinancePage from './pages/FinancePage';
 import ReportsPage from './pages/ReportsPage';
 import RefundsPage from './pages/RefundsPage';
+import CourierMapPage from './pages/CourierMapPage';
 import { CategoriesPage, CustomersPage, DeliveryPage, OrdersPage, ProductsPage, PromotionsPage, ReviewsPage, SettingsPage, SubscriptionsPage } from './pages/ManagementPages';
 
 export default function App() {
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/customers" element={<CustomersPage />} />
           <Route path="/subscriptions" element={<SubscriptionsPage />} />
           <Route path="/delivery" element={<DeliveryPage />} />
+          <Route path="/courier-map" element={<CourierMapPage />} />
           <Route path="/reviews" element={<ReviewsPage />} />
           <Route path="/promotions" element={<PromotionsPage />} />
           <Route path="/inventory" element={<InventoryPage />} />

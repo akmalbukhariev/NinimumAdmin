@@ -20,6 +20,7 @@ const TEXT: Record<string, T> = {
   LOGIN_LOCKED_15_MINUTES: ['Juda ko‘p urinish. 15 daqiqadan keyin qayta urinib ko‘ring.', 'Слишком много попыток. Повторите через 15 минут.', 'Too many attempts. Try again in 15 minutes.'],
   ADMIN_WEAK_PASSWORD: ['Parolni kiriting.', 'Введите пароль.', 'Enter a password.'],
   WAREHOUSE_SUPPLIER_REQUIRED: ['Yetkazib beruvchini ro‘yxatdan tanlang (yangi bo‘lsa, “+ Yangi yetkazib beruvchi”).', 'Выберите поставщика из списка (новый — «+ Новый поставщик»).', 'Pick the supplier from the list (or “+ New supplier”).'],
+  'A note of 1–500 characters is required': ['Izohni yozing (1–500 belgi).', 'Напишите комментарий (1–500 символов).', 'Write a note (1–500 characters).'],
   REASON_TOO_SHORT: ['Sababni aniqroq yozing (kamida 10 ta harf).', 'Опишите причину подробнее (не меньше 10 букв).', 'Describe the reason more clearly (at least 10 letters).'],
   ADMIN_LOGIN_TAKEN: ['Bu login band. Boshqa login kiriting.', 'Этот логин занят. Введите другой.', 'This login is taken. Enter another one.'],
   ADMIN_OLD_PASSWORD_WRONG: ['Eski parol noto‘g‘ri.', 'Старый пароль неверный.', 'The old password is wrong.'],

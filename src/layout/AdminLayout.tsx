@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import {
+  MapRounded,
   CategoryRounded,
   DashboardRounded,
   DeliveryDiningRounded,
@@ -67,6 +68,7 @@ const primaryItems: NavItem[] = [
   { labelKey: 'nav.finance', path: '/finance', icon: <AccountBalanceWalletRounded /> },
   { labelKey: 'nav.reports', path: '/reports', icon: <AssessmentRounded /> },
   { labelKey: 'nav.delivery', path: '/delivery', icon: <DeliveryDiningRounded /> },
+  { labelKey: 'nav.courierMap', path: '/courier-map', icon: <MapRounded /> },
 ];
 
 const secondaryItems: NavItem[] = [
