@@ -20,7 +20,7 @@ function useSummary() {
 }
 export function ProblemBell() {
   const {data,error}=useSummary(),l=useL(),navigate=useNavigate();
-  return <IconButton aria-label={l('Muammolar','Проблемы','Problems')} title={error?l('Ogohlantirishlarni yuklab bo‘lmadi','Не удалось загрузить уведомления','Could not load alerts'):l('Muammolar','Проблемы','Problems')} onClick={()=>navigate('/problems')} sx={{width:{xs:40,sm:42},height:{xs:40,sm:42},bgcolor:'#F7F8FB',border:'1px solid #ECEDEF'}}><Badge badgeContent={error?'!':Number(data?.total||0)} color="error"><NotificationsNoneRounded/></Badge></IconButton>;
+  return <IconButton aria-label={l('Muammolar','Проблемы','Problems')} title={error?l('Ogohlantirishlarni yuklab bo‘lmadi','Не удалось загрузить уведомления','Could not load alerts'):l('Muammolar','Проблемы','Problems')} onClick={()=>navigate('/problems')} sx={{width:36,height:36,borderRadius:1,bgcolor:'#00897B',color:'#fff','&:hover':{bgcolor:'#00796B'}}}><Badge badgeContent={error?'!':Number(data?.total||0)} color="error"><NotificationsNoneRounded/></Badge></IconButton>;
 }
 export function ProblemSummaryCard() {
   const {data,error}=useSummary(),l=useL(),navigate=useNavigate();

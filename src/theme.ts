@@ -3,10 +3,15 @@ import { createTheme } from '@mui/material/styles';
 export const theme = createTheme({
   palette: {
     mode: 'light',
+    // SalesDoc-like look (owner request 2026-11-26): teal actions, slate secondary, white work area.
     primary: {
-      main: '#FD473C',
-      dark: '#E73C32',
-      light: '#FFF0EF',
+      main: '#009688',
+      dark: '#00796B',
+      light: '#E0F2F1',
+      contrastText: '#FFFFFF',
+    },
+    secondary: {
+      main: '#455A64',
       contrastText: '#FFFFFF',
     },
     success: {
@@ -16,45 +21,46 @@ export const theme = createTheme({
       main: '#F7A928',
     },
     error: {
-      main: '#EA1111',
+      main: '#E53935',
     },
     background: {
-      default: '#F7F8FB',
+      default: '#FFFFFF',
       paper: '#FFFFFF',
     },
     text: {
-      primary: '#22292F',
-      secondary: '#96979B',
+      primary: '#222222',
+      secondary: '#78909C',
     },
-    divider: '#E8E9ED',
+    divider: '#E0E0E0',
   },
   shape: {
-    borderRadius: 14,
+    borderRadius: 4,
   },
   typography: {
-    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontFamily: '"Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
+    fontSize: 14,
     h4: {
-      fontWeight: 750,
-      letterSpacing: '-0.03em',
+      fontWeight: 700,
     },
     h5: {
       fontWeight: 700,
-      letterSpacing: '-0.02em',
     },
     h6: {
       fontWeight: 700,
     },
     button: {
       textTransform: 'none',
-      fontWeight: 700,
+      fontWeight: 500,
+      fontSize: 14.5,
     },
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
+          borderRadius: 4,
           boxShadow: 'none',
+          minHeight: 36,
           '@media (max-width:599.95px)': {
             minHeight: 42,
           },
@@ -71,12 +77,13 @@ export const theme = createTheme({
     MuiDialog: {
       styleOverrides: {
         paper: {
+          borderRadius: 6,
           '@media (max-width:599.95px)': {
             width: 'calc(100% - 20px)',
             maxWidth: 'calc(100% - 20px)',
             maxHeight: 'calc(100% - 20px)',
             margin: 10,
-            borderRadius: 16,
+            borderRadius: 6,
           },
         },
       },
@@ -145,9 +152,14 @@ export const theme = createTheme({
     MuiChip: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
-          fontWeight: 700,
+          borderRadius: 4,
+          fontWeight: 500,
         },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: { borderRadius: 4 },
       },
     },
   },

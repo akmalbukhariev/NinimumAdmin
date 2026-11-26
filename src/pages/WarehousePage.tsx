@@ -1,4 +1,4 @@
-import {Link as RouterLink} from 'react-router-dom';
+import {Link as RouterLink, useSearchParams} from 'react-router-dom';
 import { ListExcelExport } from '../components/ListExcelExport';
 import { createWarehouseWorkbook } from '../utils/warehouseWorkbook';
 import { useEffect, useRef, useState } from 'react';
@@ -83,7 +83,10 @@ export default function WarehousePage() {
   const [preparationEnabled,setPreparationEnabled] = useState(false);
   const [workerOpen,setWorkerOpen] = useState(false);
   const [workerForm,setWorkerForm] = useState({worker_code:'',full_name:'',password:''});
-  const [tab,setTab] = useState(0);
+  // The open tab lives in the address (?tab=), so the side-menu panel can open Kirimlar, Manzillar… directly.
+  const [query,setQuery] = useSearchParams();
+  const tab = Math.min(5,Math.max(0,Number(query.get('tab'))||0));
+  const setTab = (value:number) => setQuery(q => { q.set('tab',String(value)); return q; }, { replace: true });
   const [page,setPage] = useState(1);
   const [search,setSearch] = useState('');
   const [searchInput,setSearchInput] = useState('');

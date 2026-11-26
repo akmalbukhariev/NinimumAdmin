@@ -86,26 +86,26 @@ export function PageTitle({ title, subtitle: _subtitle, actionLabel, onAction }:
       alignItems: { xs: 'stretch', sm: 'center' },
       justifyContent: 'flex-start',
       flexWrap: 'wrap',
-      paddingBottom: { xs: '20px', sm: '30px' },
+      gap: 1.5,
+      paddingBottom: { xs: '14px', sm: '18px' },
+      marginBottom: { xs: '14px', sm: '18px' },
+      borderBottom: '1px solid',
+      borderColor: 'divider',
     }}
   >
+    {/* SalesDoc-like page header: a plain bold title, the main action on the right. */}
     <Typography
       variant="h4"
-      sx={{fontWeight:850,
-        lineHeight: 1.1,
-        fontSize: { xs: 28, sm: 32, md: 34 },
-        marginRight: { xs: 0, sm: '32px' },
-        marginBottom: { xs: '16px', sm: 0 },
-      }}
+      sx={{ fontWeight: 700, lineHeight: 1.2, fontSize: { xs: 20, sm: 22 }, flex: 1, minWidth: 0 }}
     >
       {title}
     </Typography>
-    {actionLabel && onAction && editable && <Button variant="contained" startIcon={<AddRounded />} onClick={onAction} sx={{ alignSelf: { xs: 'stretch', sm: 'center' }, minHeight: { xs: 46, sm: 40 } }}>{actionLabel}</Button>}
+    {actionLabel && onAction && editable && <Button variant="contained" startIcon={<AddRounded />} onClick={onAction} sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}>{actionLabel}</Button>}
   </Box>;
 }
 
 export function Panel({ children, sx }: { children: ReactNode; sx?: object }) {
-  return <Paper variant="outlined" sx={{ borderRadius: { xs: 2.5, sm: 3 }, overflow: 'hidden', ...sx }}>{children}</Paper>;
+  return <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden', ...sx }}>{children}</Paper>;
 }
 
 /** The scrolling area of a table: scrolls both ways, the header row stays on top. */
@@ -121,7 +121,8 @@ export function TableScroll({ children }: { children: ReactNode }) {
         WebkitOverflowScrolling: 'touch',
         scrollBehavior: 'smooth',
         '& table': { minWidth: { xs: 720, md: '100%' }, borderCollapse: 'separate', borderSpacing: 0 },
-        '& thead th': { position: 'sticky', top: 0, zIndex: 2, bgcolor: 'background.paper', boxShadow: 'inset 0 -1px 0 rgba(0,0,0,0.12)' },
+        '& thead th': { position: 'sticky', top: 0, zIndex: 2, bgcolor: 'background.paper', boxShadow: 'inset 0 -1px 0 rgba(0,0,0,0.12)', fontWeight: 700, color: '#000', borderRight: '1px solid #E0E0E0' },
+        '& thead th:last-of-type': { borderRight: 0 },
         '& tbody tr:hover td': { bgcolor: 'action.hover' },
       }}
     >
@@ -131,7 +132,7 @@ export function TableScroll({ children }: { children: ReactNode }) {
 }
 
 export function TablePanel({ children, sx }: { children: ReactNode; sx?: object }) {
-  return <Panel sx={{ mt: { xs: 2, sm: 2.5 }, ...sx }}>
+  return <Panel sx={{ mt: { xs: 1.5, sm: 2 }, ...sx }}>
     <TableScroll>{children}</TableScroll>
   </Panel>;
 }
