@@ -10,7 +10,7 @@ export async function createAccountWorkbook(kind:'customers'|'subscriptions',row
  const {Workbook}=await import('exceljs');const book=new Workbook();
  const customers=kind==='customers';const sheet=book.addWorksheet(customers?l('Mijozlar','Клиенты','Customers'):l('Obunalar','Подписки','Subscriptions'));
  if(customers) {
-  sheet.addRow(['ID',l('Mijoz','Клиент','Customer'),l('Telefon','Телефон','Phone'),'Email',l('Manzil','Адрес','Address'),l('Buyurtmalar','Заказы','Orders'),l('Sarflangan (so‘m)','Потрачено (сум)','Spent (UZS)'),l('Holat','Статус','Status'),l('Ro‘yxatdan o‘tgan (Toshkent)','Регистрация (Ташкент)','Registered (Tashkent)')]);
+  sheet.addRow(['ID',l('Mijoz','Клиент','Customer'),l('Telefon','Телефон','Phone'),l('E-pochta','Email','Email'),l('Manzil','Адрес','Address'),l('Buyurtmalar','Заказы','Orders'),l('Sarflangan (so‘m)','Потрачено (сум)','Spent (UZS)'),l('Holat','Статус','Status'),l('Ro‘yxatdan o‘tgan (Toshkent)','Регистрация (Ташкент)','Registered (Tashkent)')]);
   for(const r of rows)sheet.addRow([Number(r.id),[r.first_name,r.last_name].filter(Boolean).join(' '),String(r.phone_number??''),r.email??'',r.address??'',number(r.order_count),number(r.total_spent),label(r.is_active?'ACTIVE':'INACTIVE'),excelDate(r.created_at)]);
  } else {
   sheet.addRow(['ID',l('Mijoz ID','ID клиента','Customer ID'),l('Mijoz','Клиент','Customer'),l('Telefon','Телефон','Phone'),l('Tarif','Тариф','Tariff'),l('Tarif oylik narxi (so‘m)','Месячная цена тарифа (сум)','Tariff monthly price (UZS)'),l('Holat','Статус','Status'),l('Boshlanish (Toshkent)','Начало (Ташкент)','Start (Tashkent)'),l('Tugash (Toshkent)','Окончание (Ташкент)','End (Tashkent)'),l('Avtomatik uzaytirish','Автопродление','Auto-renew')]);

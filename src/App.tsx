@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import InventoryPage from './pages/InventoryPage';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './auth/ProtectedRoute';
@@ -9,6 +10,9 @@ import WarehousePage from './pages/WarehousePage';
 import SuppliersPage from './pages/SuppliersPage';
 import FinancePage from './pages/FinancePage';
 import ReportsPage from './pages/ReportsPage';
+// Charts (recharts) load only when the Hisobot page opens.
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
+import ReceiptCreatePage from './pages/ReceiptCreatePage';
 import RefundsPage from './pages/RefundsPage';
 import CourierMapPage from './pages/CourierMapPage';
 import { CategoriesPage, CustomersPage, DeliveryPage, OrdersPage, ProductsPage, PromotionsPage, ReviewsPage, SettingsPage, SubscriptionsPage } from './pages/ManagementPages';
@@ -37,6 +41,8 @@ export default function App() {
           <Route path="/suppliers" element={<SuppliersPage />} />
           <Route path="/finance" element={<FinancePage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/warehouse/receipts/new" element={<ReceiptCreatePage />} />
+          <Route path="/analytics" element={<Suspense fallback={null}><AnalyticsPage /></Suspense>} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

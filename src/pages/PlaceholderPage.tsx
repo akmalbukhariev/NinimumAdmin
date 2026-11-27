@@ -17,7 +17,7 @@ export default function PlaceholderPage({ titleKey, descriptionKey }: Placeholde
       <Typography sx={{color:"text.secondary", mt: 0.6, fontSize: 14 }}>{t(descriptionKey)}</Typography>
       <Paper elevation={0} sx={{ mt: 3, minHeight: 480, border: '1px solid', borderColor: 'divider', display: 'grid', placeItems: 'center', textAlign: 'center', p: 4 }}>
         <Box>
-          <Box sx={{ width: 64, height: 64, borderRadius: 4, bgcolor: '#E0F2F1', color: '#009688', display: 'grid', placeItems: 'center', mx: 'auto' }}>
+          <Box sx={{ width: 64, height: 64, borderRadius: 4, bgcolor: '#FFECEA', color: '#E8453C', display: 'grid', placeItems: 'center', mx: 'auto' }}>
             <ConstructionRounded sx={{ fontSize: 30 }} />
           </Box>
           <Typography variant="h6" sx={{ mt: 2 }}>{t('placeholder.title')}</Typography>

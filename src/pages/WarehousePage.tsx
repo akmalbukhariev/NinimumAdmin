@@ -1,4 +1,4 @@
-import {Link as RouterLink, useSearchParams} from 'react-router-dom';
+import {Link as RouterLink, useNavigate, useSearchParams} from 'react-router-dom';
 import { ListExcelExport } from '../components/ListExcelExport';
 import { createWarehouseWorkbook } from '../utils/warehouseWorkbook';
 import { useEffect, useRef, useState } from 'react';
@@ -6,7 +6,8 @@ import { Alert, Autocomplete, Box, Button, Chip, Dialog, DialogActions, DialogCo
 import { TextField } from '../components/AdminField';
 import RefreshRounded from '@mui/icons-material/RefreshRounded';
 import { useAuth } from '../auth/AuthProvider';
-import { LoadState, PageTitle, StatusChip, TablePanel, useL, dateTime, PasswordField, PasswordResetDialog, passwordOk } from '../components/AdminCommon';
+import { useColumns } from '../components/ColumnSettings';
+import { actorText, LoadState, PageTitle, StatusChip, TablePanel, useL, dateTime, PasswordField, PasswordResetDialog, passwordOk } from '../components/AdminCommon';
 import { ApiError } from '../api/client';
 import { errorText } from '../api/errorText';
 import { listProducts, prepareInvoiceImage, type Row, type PageData } from '../api/managementApi';
@@ -19,6 +20,7 @@ const emptyPage: PageData = {items: [],total: 0,page: 1,page_size: 20};
 const blankLine = (): Line => ({product: null, quantity: '1', location_id: '', unit_price:'', manufacture_date:'', expiry_date:'', input_unit:'PIECE', units_per_block:'1', batch_number:'', price_note:''});
 const number = (n: unknown) => Number(n ?? 0).toLocaleString('en-US');
 const time = dateTime;
+const day = (v: unknown) => { const m = String(v ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}.${m[2]}.${m[1]}` : '—'; };
 
 export function ProductPicker({token, value, onChange, label, activeOnly=true}: {token: string;value: Row | null;onChange: (v: Row | null) => void;label: string;activeOnly?:boolean}) {
   const [query, setQuery] = useState('');
@@ -63,7 +65,7 @@ export function ReceiptTotals({l,rows}:{l:ReturnType<typeof useL>;rows:TotalRow[
 }
 
 // TZ v13 item 3: a supplier missing from the list is added right inside the receipt window.
-function NewSupplierDialog({token,value,onClose,onCreated}:{token:string;value:{name:string;phone:string}|null;onClose:()=>void;onCreated:(id:number)=>Promise<void>}) {
+export function NewSupplierDialog({token,value,onClose,onCreated}:{token:string;value:{name:string;phone:string}|null;onClose:()=>void;onCreated:(id:number)=>Promise<void>}) {
   const l=useL();const [name,setName]=useState(''),[phone,setPhone]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
   useEffect(()=>{if(value){setName(value.name);setPhone(value.phone);setError('');}},[value]);
   const save=async()=>{setBusy(true);setError('');try{const id=await api.saveSupplier(token,undefined,{name:name.trim(),phone:phone.trim()});await onCreated(Number(id));}catch(e){setError(errorText(e,l));}finally{setBusy(false);}};
@@ -84,9 +86,11 @@ export default function WarehousePage() {
   const [workerOpen,setWorkerOpen] = useState(false);
   const [workerForm,setWorkerForm] = useState({worker_code:'',full_name:'',password:''});
   // The open tab lives in the address (?tab=), so the side-menu panel can open Kirimlar, Manzillar… directly.
-  const [query,setQuery] = useSearchParams();
+  const [query] = useSearchParams();
   const tab = Math.min(5,Math.max(0,Number(query.get('tab'))||0));
-  const setTab = (value:number) => setQuery(q => { q.set('tab',String(value)); return q; }, { replace: true });
+  const navigate = useNavigate();
+  // A section picked in the left menu starts on its first page with no old rows or errors.
+  useEffect(() => { setPage(1); setData(emptyPage); setActionError(''); }, [tab]);  // eslint-disable-line react-hooks/exhaustive-deps
   const [page,setPage] = useState(1);
   const [search,setSearch] = useState('');
   const [searchInput,setSearchInput] = useState('');
@@ -163,6 +167,14 @@ export default function WarehousePage() {
     return message ? l(...message) : l('Ma’lumotni yuklash yoki saqlashda xatolik. Qayta urinib ko‘ring.','Ошибка загрузки или сохранения. Повторите попытку.','Could not load or save data. Please retry.');
   };
   const conditionLabel = (c: unknown) => ({DAMAGED:l('Shikastlangan','Повреждён','Damaged'),EXPIRED:l('Muddati o‘tgan','Просрочен','Expired'),WRONG_PRODUCT:l('Noto‘g‘ri tovar','Не тот товар','Wrong product')} as Record<string,string>)[String(c)] || String(c || '—');
+  // References in plain words: ORDER-131 → "Buyurtma #131", BATCH-5 → "Partiya #5" (KR-, INV- stay as they are).
+  const refLabel = (value: unknown) => {
+    const text = String(value ?? '—');
+    let m = text.match(/^ORDER-RETURN-(\d+)$/); if (m) return l(`Qaytish #${m[1]}`, `Возврат #${m[1]}`, `Return #${m[1]}`);
+    m = text.match(/^ORDER-(\d+)$/); if (m) return l(`Buyurtma #${m[1]}`, `Заказ #${m[1]}`, `Order #${m[1]}`);
+    m = text.match(/^BATCH-(\d+)$/); if (m) return l(`Partiya #${m[1]}`, `Партия #${m[1]}`, `Batch #${m[1]}`);
+    return text;
+  };
   const label = (kind: unknown) => {
     const labels: Record<string,[string,string,string]> = {
       WAITING:['Navbatda','В очереди','Waiting'], PICKING:['Tayyorlanmoqda','Собирается','Preparing'], BLOCKED:['Muammo bor','Есть проблема','Problem reported'], READY:['Tayyor','Готов','Ready'], ACTIVE:['Faol','Активен','Active'], INACTIVE:['Nofaol','Неактивен','Inactive'],
@@ -170,6 +182,7 @@ export default function WarehousePage() {
       OPENING:['Boshlang‘ich qoldiq','Начальный остаток','Opening balance'],
       RECEIPT:['Kirim','Приход','Receipt'], RECEIPT_REVERSAL:['Kirim bekor qilindi','Сторно прихода','Receipt reversal'],
       SALE:['Sotuv','Продажа','Sale'], PAYMENT_REFUND:['To‘lov qaytarilishi','Возврат платежа','Payment refund'],
+      AVAILABILITY:['Sotuvga yaroqliligi o‘zgardi','Изменилась доступность','Availability changed'], WRITEOFF:['Hisobdan chiqarish','Списание','Write-off'], COUNT:['Sanash','Пересчёт','Count'], TRANSFER:['Ko‘chirish','Перемещение','Transfer'],
       DRAFT:['Qoralama','Черновик','Draft'], POSTED:['Tasdiqlangan','Подтверждён','Confirmed'],
       REVERSED:['Bekor qilingan','Сторно','Reversed'], SHELF:['Polka','Полка','Shelf'], RECEIVING:['Qabul','Приёмка','Receiving'], COLD_STORAGE:['Muzlatgich','Холодильник','Cold storage'], DAMAGED:['Brak','Брак','Damaged'], RETURNS:['Qaytish','Возврат','Returns'], ZONE:['Zona','Зона','Zone'], ROW:['Qator','Ряд','Row'], BIN:['Javon','Ячейка','Bin'],
     };
@@ -233,24 +246,50 @@ export default function WarehousePage() {
   const quantityLabel = l('Miqdor','Количество','Quantity');
   const cancelLabel = l('Yopish','Закрыть','Close');
   const refreshLabel = l('Yangilash','Обновить','Refresh');
-  const heads = tab === 0 ? [productLabel,'SKU',l('Shtrix-kod','Штрихкод','Barcode'),l('Sotuvga mavjud','Доступно для продажи','Available to sell'),l('Faol','Активен','Active')]
+  // Owner request 2026-11-27: Kirimlar list and the receipt window get a "Sozlamalar" button to show/hide columns.
+  const receiptCols = useColumns('receipts', [
+    {key:'doc',label:l('Hujjat','Документ','Document'),fixed:true},
+    {key:'supplier',label:l('Yetkazib beruvchi','Поставщик','Supplier')},
+    {key:'invoice',label:l('Nakladnoy raqami','Номер накладной','Invoice number')},
+    {key:'items',label:l('Mahsulotlar soni','Кол-во товаров','Products')},
+    {key:'pieces',label:l('Jami dona','Всего штук','Total pieces')},
+    {key:'amount',label:l('Summa','Сумма','Amount')},
+    {key:'status',label:l('Holat','Статус','Status')},
+    {key:'created_by',label:l('Yaratdi','Создал','Created by'),hidden:true},
+    {key:'created',label:l('Yaratilgan sana','Дата создания','Created')},
+    {key:'posted_by',label:l('Tasdiqladi','Подтвердил','Confirmed by'),hidden:true},
+    {key:'posted',label:l('Tasdiqlangan sana','Дата подтверждения','Confirmed'),hidden:true},
+    {key:'action',label:'',fixed:true},
+  ]);
+  const lineCols = useColumns('receipt-lines', [
+    {key:'n',label:'#',fixed:true},
+    {key:'product',label:productLabel,fixed:true},
+    {key:'batch',label:l('Partiya','Партия','Batch')},
+    {key:'location',label:l('Manzil','Ячейка','Location')},
+    {key:'price',label:l('Narx (1 dona)','Цена за шт.','Price per piece')},
+    {key:'qty',label:l('Soni (dona)','Кол-во (шт.)','Pieces')},
+    {key:'blocks',label:l('Bloklarda','В блоках','In blocks'),hidden:true},
+    {key:'sum',label:l('Summa','Сумма','Amount')},
+    {key:'made',label:l('Ishlab chiqarilgan','Дата производства','Manufactured'),hidden:true},
+    {key:'expiry',label:l('Yaroqlilik sanasi','Годен до','Expiry date')},
+    {key:'weight',label:l('Og‘irlik','Вес','Weight'),hidden:true},
+  ]);
+  const sectionTitles = [l('Qoldiq','Остатки','Stock'),l('Manzillar','Ячейки','Locations'),l('Kirimlar','Приходы','Receipts'),l('Harakat tarixi','История движений','Stock history'),l('Tayyorlash navbati','Очередь подготовки','Preparation queue'),l('Ombor xodimlari','Сотрудники склада','Warehouse workers')];
+  const heads = tab === 2 ? receiptCols.visible.map(c=>c.label) : tab === 0 ? [productLabel,'SKU',l('Shtrix-kod','Штрихкод','Barcode'),l('Sotuvga mavjud','Доступно для продажи','Available to sell'),l('Faol','Активен','Active')]
     : tab === 1 ? [l('Kod','Код','Code'),l('Nomi','Название','Name'),l('Turi','Тип','Type')]
-    : tab === 2 ? [l('Hujjat','Документ','Document'),l('Yetkazib beruvchi','Поставщик','Supplier'),l('Nakladnoy','Накладная','Invoice'),l('Holat','Статус','Status'),l('Sana','Дата','Date'),'']
     : tab === 3 ? [productLabel,l('Harakat','Движение','Movement'),quantityLabel,l('Keyingi qoldiq','Остаток после','Stock after'),l('Asos','Основание','Reference'),l('Kim','Кто','Who'),l('Sana','Дата','Date')]
     : tab === 4 ? [l('Buyurtma','Заказ','Order'),quantityLabel,l('Buyurtma holati','Статус заказа','Order status'),l('Ombor qadami','Шаг склада','Warehouse step'),l('Xodim','Сотрудник','Worker'),l('Buyurtma sanasi','Дата заказа','Order date'),'']
     : [l('Login','Логин','Login'),l('Ism','Имя','Name'),l('Holat','Статус','Status'),''];
 
   return <>
-    <PageTitle title={l('Ombor','Склад','Warehouse')} />
+    <PageTitle title={sectionTitles[tab]} />
     <Alert severity="info" sx={{mb:2}}>{l(
       'Bu bosqichda sotuvga mavjud qoldiq hisobga olinadi. Manzil kirimda qayd etiladi; har javondagi aniq qoldiq keyingi bosqichda qo‘shiladi. Buyurtmalar NinimumStock ilovasida tekshiriladi va qadoqlanadi.',
       'На этом этапе учитывается доступный для продажи остаток. Ячейка фиксируется в приходе; точные остатки по полкам появятся позже. Заказы проверяются и упаковываются в NinimumStock.',
       'This stage tracks stock available to sell. Locations are recorded on receipts; exact shelf balances follow later. Orders are checked and packed in NinimumStock.')}</Alert>
     {actionAlert}
     <Button component={RouterLink} to="/inventory" sx={{mb:2}}>{l('Partiya va manzil qoldiqlari','Партии и остатки по ячейкам','Batches and bin stock')}</Button>
-    <Tabs value={tab} onChange={(_,value) => {setTab(value);setPage(1);setData(emptyPage);setActionError('');}} variant="scrollable" scrollButtons="auto">
-      {[l('Qoldiq','Остатки','Stock'),l('Manzillar','Ячейки','Locations'),l('Kirimlar','Приходы','Receipts'),l('Harakat tarixi','История движений','Stock history'),l('Tayyorlash navbati','Очередь подготовки','Preparation queue'),l('Ombor xodimlari','Сотрудники склада','Warehouse workers')].map(title => <Tab key={title} label={title} />)}
-    </Tabs>
+    {/* Owner request 2026-11-27: no tab row here — each section opens from the left menu (Ombor → Qoldiq, Kirimlar…), like Mahsulotlar. */}
     <Stack direction={{xs:'column',sm:'row'}} spacing={2} sx={{mt:2}}>
       {tab === 0 && <Box component="form" onSubmit={event => {event.preventDefault();setSearch(searchInput);setPage(1);}} sx={{display:'flex',gap:1}}>
         <TextField size="small" label={l('Nomi, SKU yoki shtrix-kod','Название, SKU или штрихкод','Name, SKU or barcode')} value={searchInput} onChange={e => setSearchInput(e.target.value)} />
@@ -264,8 +303,10 @@ export default function WarehousePage() {
       </>}
       {tab === 1 && <Button variant="contained" disabled={!enabled || busy} onClick={() => {void api.locations(token).then(setLocations).catch(error=>setActionError(explain(error)));setActionError('');setLocationForm({code:'',name:'',type:'SHELF',hierarchy_level:'BIN',parent_id:''});setLocationOpen(true);}}>{l('Manzil qo‘shish','Добавить ячейку','Add location')}</Button>}
       {tab === 5 && <Button variant="contained" disabled={!preparationEnabled || busy} onClick={() => {setWorkerForm({worker_code:'',full_name:'',password:''});setWorkerOpen(true);}}>{l('Xodim qo‘shish','Добавить сотрудника','Add worker')}</Button>}
-      {tab === 2 && <Button variant="contained" disabled={!enabled || busy} onClick={openReceipt}>{l('Kirim yaratish','Создать приход','Create receipt')}</Button>}
+      {tab === 2 && <Button variant="contained" disabled={!enabled || busy} onClick={() => navigate('/warehouse/receipts/new')}>{l('Kirim yaratish','Создать приход','Create receipt')}</Button>}
       <Button startIcon={<RefreshRounded />} disabled={loading || busy} onClick={refresh}>{refreshLabel}</Button>
+      {/* Owner request 2026-11-27: column settings on the right side of the toolbar. */}
+      {tab === 2 && <><Box sx={{flexGrow:1}}/>{receiptCols.settings}</>}
     </Stack>
     <ListExcelExport disabled={!enabled||loading||busy} fileName={`warehouse-${tab}.xlsx`} load={async(exportPage)=>{
       if(tab===0)return api.stock(token,exportPage,search);
@@ -281,8 +322,12 @@ export default function WarehousePage() {
         {data.items.map(row => <TableRow key={row.id}>
           {tab === 0 ? <><TableCell>{row.name}</TableCell><TableCell>{row.sku || '—'}</TableCell><TableCell>{row.barcode || '—'}</TableCell><TableCell>{number(row.stock_quantity)}</TableCell><TableCell>{row.is_active ? l('Ha','Да','Yes') : l('Yo‘q','Нет','No')}</TableCell></>
           : tab === 1 ? <><TableCell>{row.path||row.code}<Typography variant="caption" sx={{display:'block'}}>{label(row.hierarchy_level)}</Typography></TableCell><TableCell>{row.name}</TableCell><TableCell>{label(row.type)}</TableCell></>
-          : tab === 2 ? <><TableCell>KR-{row.id}</TableCell><TableCell>{row.supplier_name}</TableCell><TableCell>{row.invoice_number || '—'}</TableCell><TableCell><Chip size="small" label={label(row.status)} /></TableCell><TableCell>{time(row.created_at)}</TableCell><TableCell><Button disabled={busy} onClick={() => run(async () => setDetail(await api.receipt(token,row.id)))}>{l('Ko‘rish','Открыть','View')}</Button></TableCell></>
-          : tab === 3 ? <><TableCell>{row.product_name}</TableCell><TableCell>{label(row.kind)}</TableCell><TableCell>{Number(row.quantity_change)>0 ? '+' : ''}{number(row.quantity_change)}</TableCell><TableCell>{number(row.stock_after)}</TableCell><TableCell>{row.reference}</TableCell><TableCell>{row.actor === 'SYSTEM' ? l('Tizim','Система','System') : row.actor}</TableCell><TableCell>{time(row.created_at)}</TableCell></>
+          : tab === 2 ? <>{receiptCols.visible.map(c=><TableCell key={c.key} align={['items','pieces','amount'].includes(c.key)?'right':undefined}>{
+              c.key==='doc'?<b>KR-{row.id}</b>:c.key==='supplier'?row.supplier_name:c.key==='invoice'?(row.invoice_number||'—'):c.key==='items'?number(row.items_count)
+              :c.key==='pieces'?(row.pieces==null?'—':number(row.pieces)):c.key==='amount'?(row.total_amount==null?'—':`${number(row.total_amount)} so‘m`):c.key==='status'?<Chip size="small" label={label(row.status)} />
+              :c.key==='created_by'?(row.created_by||'—'):c.key==='created'?time(row.created_at):c.key==='posted_by'?(row.posted_by||'—'):c.key==='posted'?(row.posted_at?time(row.posted_at):'—')
+              :<Button disabled={busy} onClick={() => run(async () => setDetail(await api.receipt(token,row.id)))}>{l('Ko‘rish','Открыть','View')}</Button>}</TableCell>)}</>
+          : tab === 3 ? <><TableCell>{row.product_name}</TableCell><TableCell>{label(row.kind)}</TableCell><TableCell>{Number(row.quantity_change)>0 ? '+' : ''}{number(row.quantity_change)}</TableCell><TableCell>{number(row.stock_after)}</TableCell><TableCell>{refLabel(row.reference)}</TableCell><TableCell>{row.actor === 'SYSTEM' ? l('Tizim','Система','System') : actorText(row.actor,l)}</TableCell><TableCell>{time(row.created_at)}</TableCell></>
           : tab === 4 ? <><TableCell>{row.order_number}</TableCell><TableCell>{number(row.quantity)}</TableCell><TableCell><StatusChip value={row.order_status ?? row.status}/></TableCell><TableCell>{label(row.preparation_status || 'WAITING')}</TableCell><TableCell>{row.worker_code || '—'}</TableCell><TableCell>{time(row.ordered_at)}</TableCell><TableCell><Button disabled={busy} onClick={() => run(async () => setOrder(preparationEnabled ? await api.packingDetail(token,row.id) : {...row,items:await api.preparationItems(token,row.id)}))}>{l('Ko‘rish','Открыть','View')}</Button></TableCell></>
           : <><TableCell>{row.worker_code}</TableCell><TableCell>{row.full_name}</TableCell><TableCell>{label(row.status)}</TableCell><TableCell><Button disabled={busy} onClick={() => run(async () => {await api.updateWorker(token,row.id,{status:row.status==='ACTIVE'?'INACTIVE':'ACTIVE'});refresh();})}>{row.status==='ACTIVE'?l('Faolsizlantirish','Отключить','Deactivate'):l('Faollashtirish','Включить','Activate')}</Button><Button disabled={busy} onClick={() => setPasswordFor(row)}>{l('Parolni yangilash','Сменить пароль','Reset password')}</Button></TableCell></>}
         </TableRow>)}
@@ -304,20 +349,24 @@ export default function WarehousePage() {
         </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={() => setLocationOpen(false)}>{cancelLabel}</Button><Button variant="contained" disabled={busy || !locationForm.code.trim() || !locationForm.name.trim()} onClick={() => run(async () => {await api.createLocation(token,{...locationForm,parent_id:locationForm.parent_id?Number(locationForm.parent_id):null});setLocationOpen(false);refresh();})}>{l('Saqlash','Сохранить','Save')}</Button></DialogActions>
     </Dialog>
     <NewSupplierDialog token={token} value={newSupplier} onClose={()=>setNewSupplier(null)} onCreated={async id=>{setSupplierOptions(await api.suppliers(token));setSupplierId(String(id));setNewSupplier(null);}}/>
-    <Dialog open={receiptOpen} onClose={() => {if (!busy) setReceiptOpen(false);}} fullWidth maxWidth="md">
-      <DialogTitle>{l('Yangi kirim','Новый приход','New receipt')}</DialogTitle><DialogContent>{actionAlert}
+    {/* Owner request 2026-11-27: the receipt form opens almost full screen; header fields side by side, one card per product line. */}
+    <Dialog open={receiptOpen} onClose={() => {if (!busy) setReceiptOpen(false);}} fullWidth maxWidth={false} slotProps={{paper:{sx:{width:{xs:'100%',md:'96vw'},maxWidth:1600,height:{md:'94vh'},m:{xs:1,md:2}}}}}>
+      <DialogTitle sx={{fontWeight:800,borderBottom:'1px solid',borderColor:'divider'}}>{l('Yangi kirim','Новый приход','New receipt')}</DialogTitle><DialogContent sx={{pt:'16px!important'}}>{actionAlert}
         <Alert severity="info" sx={{mb:2}}>{l('Qoralama qoldiqni o‘zgartirmaydi. Saqlagandan keyin tekshiring va tasdiqlang.','Черновик не меняет остаток. После сохранения проверьте и подтвердите.','A draft does not change stock. Review and confirm it after saving.')}</Alert>
         {!locations.length && <Alert severity="warning" sx={{mb:2}}>{l('Avval Manzillar bo‘limida manzil yarating.','Сначала создайте ячейку в разделе Ячейки.','Create a location in the Locations tab first.')}</Alert>}
         <Stack spacing={2}>
+          <Box sx={{display:'grid',gridTemplateColumns:{xs:'1fr',md:'repeat(2,1fr)',lg:'repeat(4,1fr)'},gap:2}}>
           <TextField select required label={l('Yetkazib beruvchi','Поставщик','Supplier')} value={supplierId} onChange={e=>{if(e.target.value==='__new'){setNewSupplier({name:'',phone:''});return;}setSupplierId(e.target.value);}}>{supplierOptions.filter(s=>s.is_active).map(s=><MenuItem key={s.id} value={String(s.id)}>{s.name}</MenuItem>)}<MenuItem value="__new" sx={{color:'primary.main',fontWeight:700}}>+ {l('Yangi yetkazib beruvchi','Новый поставщик','New supplier')}</MenuItem></TextField>
           {!!supplierId&&<><TextField required type="number" label={l('Nakladnoy jami summasi','Общая сумма накладной','Invoice total')} value={invoiceAmount} onChange={e=>setInvoiceAmount(e.target.value)}/><TextField required type="date" label={l('Nakladnoy sanasi','Дата накладной','Invoice date')} slotProps={{inputLabel:{shrink:true}}} value={invoiceDate} onChange={e=>setInvoiceDate(e.target.value)}/></>}
-          {invoiceDiffers&&<><Alert severity="warning">{l(`Nakladnoy summasi qatorlar yig‘indisidan farq qiladi: qatorlar ${number(linesTotal)}, nakladnoy ${number(invoiceAmount)}. Qarz qatorlar bo‘yicha yoziladi.`,`Сумма накладной отличается от суммы строк: строки ${number(linesTotal)}, накладная ${number(invoiceAmount)}. Долг считается по строкам.`,`Invoice total differs from the lines: lines ${number(linesTotal)}, invoice ${number(invoiceAmount)}. The debt follows the lines.`)}</Alert><TextField required label={l('Farq sababi','Причина разницы','Reason for the difference')} value={invoiceReason} onChange={e=>setInvoiceReason(e.target.value)}/></>}
+          {invoiceDiffers&&<><Alert severity="warning" sx={{gridColumn:'1/-1'}}>{l(`Nakladnoy summasi qatorlar yig‘indisidan farq qiladi: qatorlar ${number(linesTotal)}, nakladnoy ${number(invoiceAmount)}. Qarz qatorlar bo‘yicha yoziladi.`,`Сумма накладной отличается от суммы строк: строки ${number(linesTotal)}, накладная ${number(invoiceAmount)}. Долг считается по строкам.`,`Invoice total differs from the lines: lines ${number(linesTotal)}, invoice ${number(invoiceAmount)}. The debt follows the lines.`)}</Alert><TextField required label={l('Farq sababi','Причина разницы','Reason for the difference')} value={invoiceReason} onChange={e=>setInvoiceReason(e.target.value)}/></>}
           <TextField required label={l('Nakladnoy raqami','Номер накладной','Invoice number')} value={invoice} onChange={e => setInvoice(e.target.value)} />
+          <TextField label={l('Izoh','Примечание','Note')} value={note} onChange={e => setNote(e.target.value)} />
+          </Box>
           <Button component="label" disabled={busy}>{l('Nakladnoy rasmini tanlash','Фото накладной','Choose invoice photo')}<input hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{const file=e.target.files?.[0];if(file)void run(async()=>setInvoiceImage(await prepareInvoiceImage(file)));e.target.value='';}}/></Button>
           {invoiceImage&&<Box><Box component="img" src={`data:image/png;base64,${invoiceImage}`} sx={{maxHeight:160,maxWidth:'100%'}}/><Button onClick={()=>setInvoiceImage('')}>{l('Rasmni olib tashlash','Удалить фото','Remove photo')}</Button></Box>}
-          <TextField label={l('Izoh','Примечание','Note')} value={note} onChange={e => setNote(e.target.value)} />
-          {lines.map((item,i) => <Box key={i} sx={{display:'grid',gridTemplateColumns:{xs:'1fr',md:'2fr 1fr 1fr auto'},gap:1,alignItems:'start'}}>
-            <Box><ProductPicker token={token} activeOnly={false} value={item.product} label={productLabel} onChange={v => setLines(previous => previous.map((line,n) => n===i ? {...line,product:v} : line))} />{(costs?.untracked as number[]|undefined)?.includes(Number(item.product?.id))&&(Number(item.product?.stock_quantity||0)===0?<Typography variant="caption" color="text.secondary">{l('Tasdiqlanganda bu tovar partiya hisobiga o‘tadi (muddat va javon saqlanadi).','После подтверждения товар перейдёт на партионный учёт (срок и ячейка сохранятся).','On confirmation this product moves to batch tracking (expiry and bin are kept).')}</Typography>:<Typography variant="caption" color="warning.main">{l(`Bu tovarda ${item.product?.stock_quantity} dona eski qoldiq bor, uning muddati noma’lum: avval Inventar → Boshlang‘ich sanash qiling, aks holda muddat va javon saqlanmaydi.`,`У товара ${item.product?.stock_quantity} шт. старого остатка без срока: сначала сделайте начальный пересчёт, иначе срок и ячейка не сохранятся.`,`This product has ${item.product?.stock_quantity} old pieces with unknown expiry: do an opening count first, or the expiry and bin won’t be kept.`)}</Typography>)}</Box>
+          <Typography sx={{fontWeight:800,fontSize:16,pt:1}}>{l('Mahsulotlar','Товары','Products')} ({lines.length})</Typography>
+          {lines.map((item,i) => <Box key={i} sx={{display:'grid',gridTemplateColumns:{xs:'1fr',md:'repeat(4,1fr)',xl:'repeat(6,1fr)'},gap:1.5,alignItems:'start',p:2,border:'1px solid',borderColor:'divider',borderRadius:3,bgcolor:'#FCFCFD',position:'relative'}}>
+            <Box sx={{gridColumn:{md:'span 2'}}}><Typography sx={{fontSize:12,fontWeight:800,color:'primary.main',mb:0.75}}>#{i+1}</Typography><ProductPicker token={token} activeOnly={false} value={item.product} label={productLabel} onChange={v => setLines(previous => previous.map((line,n) => n===i ? {...line,product:v} : line))} />{(costs?.untracked as number[]|undefined)?.includes(Number(item.product?.id))&&(Number(item.product?.stock_quantity||0)===0?<Typography variant="caption" color="text.secondary">{l('Tasdiqlanganda bu tovar partiya hisobiga o‘tadi (muddat va javon saqlanadi).','После подтверждения товар перейдёт на партионный учёт (срок и ячейка сохранятся).','On confirmation this product moves to batch tracking (expiry and bin are kept).')}</Typography>:<Typography variant="caption" color="warning.main">{l(`Bu tovarda ${item.product?.stock_quantity} dona eski qoldiq bor, uning muddati noma’lum: avval Inventar → Boshlang‘ich sanash qiling, aks holda muddat va javon saqlanmaydi.`,`У товара ${item.product?.stock_quantity} шт. старого остатка без срока: сначала сделайте начальный пересчёт, иначе срок и ячейка не сохранятся.`,`This product has ${item.product?.stock_quantity} old pieces with unknown expiry: do an opening count first, or the expiry and bin won’t be kept.`)}</Typography>)}</Box>
             <TextField required type="number" label={quantityLabel} value={item.quantity} onChange={e => setLines(previous => previous.map((line,n) => n===i ? {...line,quantity:e.target.value} : line))} />
             <TextField select required label={l('Manzil','Ячейка','Location')} value={item.location_id} onChange={e => setLines(previous => previous.map((line,n) => n===i ? {...line,location_id:e.target.value} : line))}>{locations.filter(location => location.is_active&&location.hierarchy_level==='BIN').map(location => <MenuItem key={location.id} value={String(location.id)}>{location.path||location.code}</MenuItem>)}</TextField>
             <TextField required type="number" label={l('Kirim narxi (1 dona)','Закупочная цена за штуку','Purchase price per piece')} value={item.unit_price} onChange={e=>setLines(v=>v.map((r,n)=>n===i?{...r,unit_price:e.target.value}:r))} color={priceJump(item)?.over?'warning':undefined} focused={priceJump(item)?.over||undefined}
@@ -328,19 +377,25 @@ export default function WarehousePage() {
             <TextField type="date" label={l('Ishlab chiqarilgan','Дата производства','Manufactured')} slotProps={{inputLabel:{shrink:true}}} value={item.manufacture_date} onChange={e=>setLines(v=>v.map((r,n)=>n===i?{...r,manufacture_date:e.target.value}:r))}/>
             <TextField required type="date" label={l('Yaroqlilik sanasi','Годен до','Expiry date')} slotProps={{inputLabel:{shrink:true}}} value={item.expiry_date} onChange={e=>setLines(v=>v.map((r,n)=>n===i?{...r,expiry_date:e.target.value}:r))}/>
             <TextField label={l('Partiya raqami','Номер партии','Batch number')} value={item.batch_number} onChange={e=>setLines(v=>v.map((r,n)=>n===i?{...r,batch_number:e.target.value}:r))}/>
-            <Button disabled={lines.length===1 || busy} onClick={() => setLines(previous => previous.filter((_,n) => n!==i))}>{l('Olib tashlash','Убрать','Remove')}</Button>
+            <Button color="error" sx={{alignSelf:'center',justifySelf:'start'}} disabled={lines.length===1 || busy} onClick={() => setLines(previous => previous.filter((_,n) => n!==i))}>{l('Olib tashlash','Убрать','Remove')}</Button>
           </Box>)}
-          <Button disabled={lines.length>=100 || busy} onClick={() => setLines(previous => [...previous,blankLine()])}>{l('Mahsulot qo‘shish','Добавить товар','Add product')}</Button>
+          <Button variant="outlined" sx={{alignSelf:'flex-start'}} disabled={lines.length>=100 || busy} onClick={() => setLines(previous => [...previous,blankLine()])}>+ {l('Mahsulot qo‘shish','Добавить товар','Add product')}</Button>
           <ReceiptTotals l={l} rows={lines.map(item=>({pieces:Number(item.quantity||0)*(item.input_unit==='BLOCK'?Number(item.units_per_block||0):1),blocks:item.input_unit==='BLOCK'?Number(item.quantity||0):0,price:Number(item.unit_price||0),weight:Number(item.product?.weight_gram||0)}))}/>
-        </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={() => setReceiptOpen(false)}>{cancelLabel}</Button><Button variant="contained" disabled={busy || !locations.length} onClick={saveReceipt}>{l('Qoralama saqlash','Сохранить черновик','Save draft')}</Button></DialogActions>
+        </Stack></DialogContent><DialogActions sx={{borderTop:'1px solid',borderColor:'divider',px:3,py:1.5}}><Button disabled={busy} onClick={() => setReceiptOpen(false)}>{cancelLabel}</Button><Button variant="contained" disabled={busy || !locations.length} onClick={saveReceipt}>{l('Qoralama saqlash','Сохранить черновик','Save draft')}</Button></DialogActions>
     </Dialog>
-    <Dialog open={Boolean(detail)} onClose={() => {if (!busy) setDetail(null);}} fullWidth maxWidth="md">
+    <Dialog open={Boolean(detail)} onClose={() => {if (!busy) setDetail(null);}} fullWidth maxWidth="lg">
       <DialogTitle>KR-{detail?.id} · {label(detail?.status)}</DialogTitle><DialogContent>{actionAlert}
         {detail?.invoice_image_data&&<Box component="img" src={detail.invoice_image_data} alt={l('Nakladnoy','Накладная','Invoice')} sx={{maxWidth:'100%',maxHeight:300,mb:2}}/>}
         <Typography sx={{mb:1}}>{detail?.supplier_name} · {detail?.invoice_number}</Typography><Typography sx={{mb:2}}>{detail?.note}</Typography>
         <Typography sx={{mb:2}}>{l('Yaratdi','Создал','Created by')}: {detail?.created_by} · {time(detail?.created_at)}{detail?.posted_by && ` · ${l('Tasdiqladi','Подтвердил','Confirmed by')}: ${detail.posted_by}`}</Typography>
         {detail?.status === 'REVERSED' && <Alert severity="info" sx={{mb:2}}>{detail.reversed_by}: {detail.reversal_reason}</Alert>}
-        <Table><TableHead><TableRow><TableCell>{productLabel}</TableCell><TableCell>{quantityLabel}</TableCell><TableCell>{l('Manzil','Ячейка','Location')}</TableCell></TableRow></TableHead><TableBody>{(detail?.items || []).map((item:Row) => <TableRow key={item.id}><TableCell>{item.product_name}<Typography variant="caption" sx={{display:'block'}}>{item.batch_number||'—'} · {item.unit_price??'—'} UZS / {l('dona','шт.','piece')} · {String(item.expiry_date||'—').slice(0,10)}</Typography>{item.price_note&&<Typography variant="caption" sx={{display:'block',color:'warning.main'}}>{l('Narx izohi','Причина цены','Price note')}: {item.price_note}</Typography>}{item.fit_quantity!=null&&<Typography variant="caption" sx={{display:'block'}}>{l('Yaroqli','Годных','Fit')}: {number(item.fit_quantity)}{Number(item.unfit_quantity)>0&&` · ${l('Yaroqsiz','Негодных','Unfit')}: ${number(item.unfit_quantity)} (${conditionLabel(item.unfit_condition)})`}{Number(item.shortage_quantity)>0&&` · ${l('Kam keldi','Недостача','Short')}: ${number(item.shortage_quantity)} (${item.shortage_reason})`}</Typography>}{item.unfit_photo_data&&<Box component="img" src={item.unfit_photo_data} sx={{display:'block',maxWidth:'100%',maxHeight:200,objectFit:'contain',borderRadius:1,mt:0.5}}/>}{detail?.status==='DRAFT'&&<Button size="small" onClick={()=>setMetadataEdit({...item,manufacture_date:String(item.manufacture_date||'').slice(0,10),expiry_date:String(item.expiry_date||'').slice(0,10)})}>{l('Narx va sanalar','Цена и даты','Price and dates')}</Button>}</TableCell><TableCell>{item.quantity==null?'—':number(item.quantity)}</TableCell><TableCell>{item.location_code}</TableCell></TableRow>)}</TableBody></Table>{(detail?.status==='POSTED'||detail?.status==='REVERSED')&&<Box sx={{mt:2}}><ReceiptTotals l={l} rows={(detail.items||[]).map((item:Row)=>({pieces:Number(item.quantity||0),blocks:item.input_unit==='BLOCK'?Number(item.input_quantity||0):0,price:Number(item.unit_price||0),weight:Number(item.weight_gram||0)}))}/></Box>}
+        <Box sx={{display:'flex',justifyContent:'flex-end',mb:1}}>{lineCols.settings}</Box>
+        <Box sx={{overflowX:'auto',border:'1px solid',borderColor:'divider',borderRadius:2}}><Table size="small" sx={{'& thead th':{bgcolor:'#F7F8FB',fontWeight:700,whiteSpace:'nowrap'}}}><TableHead><TableRow>{lineCols.visible.map(c=><TableCell key={c.key} align={['price','qty','blocks','sum','weight'].includes(c.key)?'right':undefined}>{c.label}</TableCell>)}</TableRow></TableHead><TableBody>{(detail?.items || []).map((item:Row,index:number) => <TableRow key={item.id}>{lineCols.visible.map(c=>c.key==='product'?<TableCell key={c.key}>{item.product_name}{item.price_note&&<Typography variant="caption" sx={{display:'block',color:'warning.main'}}>{l('Narx izohi','Причина цены','Price note')}: {item.price_note}</Typography>}{item.fit_quantity!=null&&<Typography variant="caption" sx={{display:'block'}}>{l('Yaroqli','Годных','Fit')}: {number(item.fit_quantity)}{Number(item.unfit_quantity)>0&&` · ${l('Yaroqsiz','Негодных','Unfit')}: ${number(item.unfit_quantity)} (${conditionLabel(item.unfit_condition)})`}{Number(item.shortage_quantity)>0&&` · ${l('Kam keldi','Недостача','Short')}: ${number(item.shortage_quantity)} (${item.shortage_reason})`}</Typography>}{item.unfit_photo_data&&<Box component="img" src={item.unfit_photo_data} sx={{display:'block',maxWidth:'100%',maxHeight:200,objectFit:'contain',borderRadius:1,mt:0.5}}/>}{detail?.status==='DRAFT'&&<Button size="small" onClick={()=>setMetadataEdit({...item,manufacture_date:String(item.manufacture_date||'').slice(0,10),expiry_date:String(item.expiry_date||'').slice(0,10)})}>{l('Narx va sanalar','Цена и даты','Price and dates')}</Button>}</TableCell>
+          :<TableCell key={c.key} align={['price','qty','blocks','sum','weight'].includes(c.key)?'right':undefined} sx={{whiteSpace:'nowrap'}}>{
+            c.key==='n'?index+1:c.key==='batch'?(item.batch_number||'—'):c.key==='location'?item.location_code:c.key==='price'?(item.unit_price==null?'—':number(item.unit_price))
+            :c.key==='qty'?(item.quantity==null?'—':number(item.quantity)):c.key==='blocks'?(item.input_unit==='BLOCK'&&item.input_quantity!=null?`${number(item.input_quantity)} × ${number(item.units_per_block)}`:'—')
+            :c.key==='sum'?(item.quantity==null||item.unit_price==null?'—':number(Number(item.quantity)*Number(item.unit_price))):c.key==='made'?(day(item.manufacture_date)):c.key==='expiry'?day(item.expiry_date)
+            :c.key==='weight'?(item.weight_gram==null?'—':`${number(item.weight_gram)} g`):null}</TableCell>)}</TableRow>)}</TableBody></Table></Box>{(detail?.status==='POSTED'||detail?.status==='REVERSED')&&<Box sx={{mt:2}}><ReceiptTotals l={l} rows={(detail.items||[]).map((item:Row)=>({pieces:Number(item.quantity||0),blocks:item.input_unit==='BLOCK'?Number(item.input_quantity||0):0,price:Number(item.unit_price||0),weight:Number(item.weight_gram||0)}))}/></Box>}
       </DialogContent><DialogActions><Button disabled={busy} onClick={() => setDetail(null)}>{cancelLabel}</Button>
         {detail?.status==='DRAFT' && <Button variant="contained" disabled={busy} onClick={() => {setActionError('');setCountFailed(false);setAcceptShortage(false);setShortageReason('');setBlindCounts((detail.items||[]).map((item:Row)=>({product_id:item.product_id,product_name:item.product_name,units_per_block:item.input_unit==='BLOCK'?Number(item.units_per_block||0):0,quantity:'',unfit:false,unfit_quantity:'',unfit_condition:'',unfit_photo:''})));}}>{l('Tasdiqlash va qoldiqqa qo‘shish','Подтвердить и добавить в остаток','Confirm and add stock')}</Button>}
         {detail?.status==='POSTED' && <Button color="warning" disabled={busy} onClick={() => {setActionError('');setReverseId(detail.id);setReason('');}}>{l('Kirimni bekor qilish','Сторно','Reverse receipt')}</Button>}
@@ -363,7 +418,7 @@ export default function WarehousePage() {
     <Dialog open={Boolean(order)} onClose={() => setOrder(null)} fullWidth maxWidth="md"><DialogTitle>{order?.order_number}</DialogTitle><DialogContent>{actionAlert}
     <Typography>{label(order?.preparation_status || 'WAITING')} · {order?.worker_code || '—'}</Typography>{order?.note && <Alert severity="warning">{order.note}</Alert>}
     <Table><TableHead><TableRow><TableCell>{productLabel}</TableCell><TableCell>{quantityLabel}</TableCell><TableCell>{l('Tekshirildi','Проверено','Checked')}</TableCell><TableCell>{l('Shtrix-kod','Штрихкод','Barcode')}</TableCell></TableRow></TableHead><TableBody>{(order?.items || []).map((item:Row,i:number) => <TableRow key={i}><TableCell>{item.product_name}</TableCell><TableCell>{number(item.required_quantity ?? item.quantity)}</TableCell><TableCell>{number(item.checked_quantity ?? 0)}</TableCell><TableCell>{item.barcode || '—'}</TableCell></TableRow>)}</TableBody></Table>
-    {(order?.events || []).map((event:Row,i:number) => <Typography key={i} sx={{mt:1}}>{time(event.created_at)} · {event.actor} · {label(event.kind)}{event.quantity!=null ? ` · ${event.quantity}` : ''}{event.note ? ` · ${event.note}` : ''}</Typography>)}
+    {(order?.events || []).map((event:Row,i:number) => <Typography key={i} sx={{mt:1}}>{time(event.created_at)} · {actorText(event.actor,l)} · {label(event.kind)}{event.quantity!=null ? ` · ${event.quantity}` : ''}{event.note ? ` · ${event.note}` : ''}</Typography>)}
     </DialogContent><DialogActions>{preparationEnabled && order?.worker_code && <Button disabled={busy} color="warning" onClick={() => run(async () => {const reason=window.prompt(l('Qayta navbatga qo‘yish sababi. Tekshirilgan sonlar tozalanadi.','Причина возврата в очередь. Проверенные количества сбросятся.','Reason for returning to queue. Checked quantities will be cleared.'));if(reason?.trim()){await api.resetPacking(token,order.id,reason);setOrder(await api.packingDetail(token,order.id));refresh();}})}>{l('Qayta navbatga qo‘yish','Вернуть в очередь','Return to queue')}</Button>}<Button onClick={() => setOrder(null)}>{cancelLabel}</Button></DialogActions></Dialog>
   </>;
 }

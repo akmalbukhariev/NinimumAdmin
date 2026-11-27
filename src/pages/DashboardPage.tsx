@@ -150,7 +150,7 @@ export default function DashboardPage() {
   const deliveredEnd = preparingEnd + percentages.delivered;
   const onTheWayEnd = deliveredEnd + percentages.onTheWay;
   const donutBackground = todayOrderTotal
-    ? `conic-gradient(#009688 0 ${preparingEnd}%, #7CB518 ${preparingEnd}% ${deliveredEnd}%, #3D7CF4 ${deliveredEnd}% ${onTheWayEnd}%, #D9D9D9 ${onTheWayEnd}% 100%)`
+    ? `conic-gradient(#E8453C 0 ${preparingEnd}%, #7CB518 ${preparingEnd}% ${deliveredEnd}%, #3D7CF4 ${deliveredEnd}% ${onTheWayEnd}%, #D9D9D9 ${onTheWayEnd}% 100%)`
     : '#E8E9ED';
 
   if (loading && !data) {
@@ -196,7 +196,7 @@ export default function DashboardPage() {
       {data && (
         <>
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' } }}>
-            <StatCard title={t('dashboard.revenue')} value={data.summary.revenue==null?'—':formatMoney(data.summary.revenue, true)} caption={language==='uz'?'Faqat yetkazilgan, qaytarilgan qism chiqarilgan':language==='ru'?'Доставленные, за вычетом возвратов':'Delivered only, less returned portion'} icon={<AttachMoneyRounded />} accent="#009688" />
+            <StatCard title={t('dashboard.revenue')} value={data.summary.revenue==null?'—':formatMoney(data.summary.revenue, true)} caption={language==='uz'?'Faqat yetkazilgan, qaytarilgan qism chiqarilgan':language==='ru'?'Доставленные, за вычетом возвратов':'Delivered only, less returned portion'} icon={<AttachMoneyRounded />} accent="#E8453C" />
             <StatCard title={t('dashboard.orders')} value={formatNumber(data.summary.order_count)} caption={t('common.allTime')} icon={<ReceiptLongOutlined />} accent="#3D7CF4" />
             <StatCard title={t('dashboard.customers')} value={formatNumber(data.summary.customer_count)} caption={t('common.total')} icon={<GroupsRounded />} accent="#7CB518" />
             <StatCard title={t('dashboard.subscriptions')} value={formatNumber(data.summary.subscription_count)} caption={t('common.activeNow')} icon={<WorkspacePremiumOutlined />} accent="#9A62E8" />
@@ -230,7 +230,7 @@ export default function DashboardPage() {
                             maxWidth: 44,
                             mx: 'auto',
                             borderRadius: '8px 8px 3px 3px',
-                            background: index === 6 ? 'linear-gradient(180deg, #009688 0%, #4DB6AC 100%)' : 'linear-gradient(180deg, #E0F2F1 0%, #FFF2F1 100%)',
+                            background: index === 6 ? 'linear-gradient(180deg, #E8453C 0%, #F2837C 100%)' : 'linear-gradient(180deg, #FFECEA 0%, #FFF2F1 100%)',
                             position: 'relative',
                             '&::after': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 4, borderRadius: 99, backgroundColor: index === 6 ? '#E73C32' : '#FFC9C5' },
                           }}
@@ -265,7 +265,7 @@ export default function DashboardPage() {
 
               <Box sx={{ mt: 3.2, display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: 1.6 }}>
                 {[
-                  [t('dashboard.status.preparing'), '#009688', groupedStatuses.preparing],
+                  [t('dashboard.status.preparing'), '#E8453C', groupedStatuses.preparing],
                   [t('dashboard.status.delivered'), '#7CB518', groupedStatuses.delivered],
                   [t('dashboard.status.onTheWay'), '#3D7CF4', groupedStatuses.onTheWay],
                   [t('dashboard.status.cancelled'), '#D9D9D9', groupedStatuses.cancelled],
@@ -333,7 +333,7 @@ export default function DashboardPage() {
                   <Typography variant="h6">{t('dashboard.lowStock')}</Typography>
                   <Typography variant="body2" sx={{color:"text.secondary", mt: 0.35 }}>{t('dashboard.lowStockSubtitle')}</Typography>
                 </Box>
-                <Box sx={{ width: 38, height: 38, display: 'grid', placeItems: 'center', borderRadius: 2.5, bgcolor: '#E0F2F1', color: '#009688' }}>
+                <Box sx={{ width: 38, height: 38, display: 'grid', placeItems: 'center', borderRadius: 2.5, bgcolor: '#FFECEA', color: '#E8453C' }}>
                   <Inventory2Outlined fontSize="small" />
                 </Box>
               </Box>
@@ -350,7 +350,7 @@ export default function DashboardPage() {
                         <Typography sx={{ fontSize: 13, fontWeight: 700 }}>{item.product_name}</Typography>
                         <Typography sx={{ fontSize: 12, color: stock < 10 ? '#D53D34' : '#B97108', fontWeight: 800 }}>{formatNumber(stock)} {t('dashboard.left')}</Typography>
                       </Box>
-                      <LinearProgress variant="determinate" value={percentage} sx={{ mt: 1, height: 6, borderRadius: 99, bgcolor: '#F1F2F4', '& .MuiLinearProgress-bar': { borderRadius: 99, bgcolor: stock < 10 ? '#009688' : '#F7A928' } }} />
+                      <LinearProgress variant="determinate" value={percentage} sx={{ mt: 1, height: 6, borderRadius: 99, bgcolor: '#F1F2F4', '& .MuiLinearProgress-bar': { borderRadius: 99, bgcolor: stock < 10 ? '#E8453C' : '#F7A928' } }} />
                     </Box>
                   );
                 })}

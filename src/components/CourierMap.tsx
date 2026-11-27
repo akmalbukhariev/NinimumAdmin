@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box } from '@mui/material';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -6,19 +6,37 @@ import 'leaflet/dist/leaflet.css';
 // Courier GPS V1b: one Leaflet map with OpenStreetMap tiles (free, no key). Shahrisabz is the default view.
 export const SHAHRISABZ: [number, number] = [39.0578, 66.8342];
 
+/** Ninimum works in Shahrisabz: the map opens there and only fits to points within this distance of the city. */
+const AREA_KM = 60;
+function nearShahrisabz(p: [number, number]) {
+  const dLat = (p[0] - SHAHRISABZ[0]) * 111, dLon = (p[1] - SHAHRISABZ[1]) * 111 * Math.cos(SHAHRISABZ[0] * Math.PI / 180);
+  return Math.hypot(dLat, dLon) <= AREA_KM;
+}
+
 export type MapMarker = { lat: number; lon: number; color: string; label: string; popup?: string; big?: boolean };
 export type MapLine = { points: [number, number][]; color: string };
 
 /** Draws markers and lines; fits the view to them once (or whenever fitKey changes). */
 export function CourierMap({ markers, lines = [], height = 520, fitKey }: { markers: MapMarker[]; lines?: MapLine[]; height?: number | string; fitKey?: string }) {
+  const [refit, setRefit] = useState(0);
   const box = useRef<HTMLDivElement | null>(null), map = useRef<L.Map | null>(null), layer = useRef<L.LayerGroup | null>(null), fitted = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!box.current || map.current) return;
-    map.current = L.map(box.current, { zoomControl: true }).setView(SHAHRISABZ, 13);
+    // Owner request 2026-11-27: always start on Shahrisabz; zoom with the wheel, double click, pinch or the +/− buttons.
+    map.current = L.map(box.current, { zoomControl: false, minZoom: 8, maxZoom: 19, zoomSnap: 0.5, zoomDelta: 1, wheelPxPerZoomLevel: 90 }).setView(SHAHRISABZ, 13);
+    L.control.zoom({ position: 'topleft', zoomInTitle: 'Yaqinlashtirish', zoomOutTitle: 'Uzoqlashtirish' }).addTo(map.current);
+    const Home = L.Control.extend({ onAdd: () => {
+      const b = L.DomUtil.create('button', 'ninimum-map-home');
+      b.type = 'button'; b.title = 'Shahrisabz'; b.textContent = 'Shahrisabz';
+      b.style.cssText = 'background:#fff;border:2px solid rgba(0,0,0,.2);border-radius:8px;padding:6px 10px;font:700 13px Manrope,sans-serif;cursor:pointer;color:#1F2233';
+      L.DomEvent.on(b, 'click', e => { L.DomEvent.stop(e); map.current?.setView(SHAHRISABZ, 13); });
+      return b;
+    } });
+    new Home({ position: 'topright' }).addTo(map.current);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map.current);
     layer.current = L.layerGroup().addTo(map.current);
-    // The map often mounts inside a dialog that is still animating; measure again once it has its size.
-    setTimeout(() => map.current?.invalidateSize(), 250);
+    // The map often mounts inside a dialog or tab that is still sizing; measure again once it has its size, then fit again.
+    setTimeout(() => { map.current?.invalidateSize(); fitted.current = undefined; setRefit(n => n + 1); }, 300);
     return () => { map.current?.remove(); map.current = null; };
   }, []);
   useEffect(() => {
@@ -39,12 +57,17 @@ export function CourierMap({ markers, lines = [], height = 520, fitKey }: { mark
       bounds.push([p.lat, p.lon]);
     }
     const key = fitKey ?? 'once';
-    if (bounds.length && fitted.current !== key) {
+    // Points far from Shahrisabz (a test phone abroad, a wrong customer pin) are drawn but never used to zoom out to the whole world.
+    const near = bounds.filter(nearShahrisabz);
+    if (fitted.current !== key) {
       fitted.current = key;
-      if (bounds.length === 1) m.setView(bounds[0], 15); else m.fitBounds(L.latLngBounds(bounds), { padding: [30, 30], maxZoom: 16 });
+      if (!near.length) m.setView(SHAHRISABZ, 13);
+      else if (near.length === 1) m.setView(near[0], 15);
+      else m.fitBounds(L.latLngBounds(near), { padding: [30, 30], maxZoom: 16 });
     }
-  }, [markers, lines, fitKey]);
-  return <Box ref={box} sx={{ height, width: '100%', borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider', zIndex: 0, position: 'relative' }} />;
+  }, [markers, lines, fitKey, refit]);
+  return <Box ref={box} sx={{ height, width: '100%', borderRadius: 3, overflow: 'hidden', border: '1px solid', borderColor: 'divider', zIndex: 0, position: 'relative',
+    '& .leaflet-control-zoom a': { width: 38, height: 38, lineHeight: '38px', fontSize: 22 } }} />;
 }
 
 export function escapeHtml(text: unknown): string {

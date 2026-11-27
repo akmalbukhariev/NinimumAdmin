@@ -6,12 +6,14 @@ export const restrictedPaths = ['/problems', '/orders', '/products', '/categorie
 export const pagePermissions: Record<string, string> = {
   '/dashboard': 'dashboard.view', '/problems': 'problems.view', '/refunds': 'problems.view', '/orders': 'orders.view', '/products': 'products.view',
   '/categories': 'categories.view', '/customers': 'customers.view', '/subscriptions': 'subscriptions.view',
-  '/warehouse': 'warehouse.view', '/inventory': 'inventory.view', '/suppliers': 'suppliers.view', '/delivery': 'delivery.view', '/courier-map': 'delivery.view',
+  '/warehouse': 'warehouse.view', '/warehouse/receipts/new': 'warehouse.edit', '/inventory': 'inventory.view', '/suppliers': 'suppliers.view', '/delivery': 'delivery.view', '/courier-map': 'delivery.view',
   '/reviews': 'reviews.view', '/promotions': 'promotions.view', '/finance': 'money.view|money.count',
   // Reports: open when the user may see at least one report; each report checks its own permission.
   '/reports': 'warehouse.view|suppliers.view|orders.view|money.view|subscriptions.view',
+  // "Hisobot" overview: money, customers or staff parts; the server leaves out what the user may not see.
+  '/analytics': 'money.view|customers.view|orders.view|delivery.view|warehouse.view',
 };
-const order = ['/dashboard', '/orders', '/problems', '/refunds', '/customers', '/products', '/categories', '/subscriptions', '/warehouse', '/inventory', '/suppliers', '/delivery', '/courier-map', '/reviews', '/promotions', '/finance', '/reports'];
+const order = ['/dashboard', '/orders', '/problems', '/refunds', '/customers', '/products', '/categories', '/subscriptions', '/warehouse', '/inventory', '/suppliers', '/delivery', '/courier-map', '/reviews', '/promotions', '/finance', '/analytics', '/reports'];
 
 /** True when the admin holds the permission ("x.view" is also met by "x.edit"). The owner holds everything. */
 export function can(admin: AdminUser | null | undefined, permission: string): boolean {

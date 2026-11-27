@@ -67,6 +67,18 @@ export function useEnumLabel() {
   };
 }
 
+/** Who did it, in plain words: "CUSTOMER:11" → "Mijoz #11", "SYSTEM" → "Tizim"; staff logins stay as they are. */
+export function actorText(actor: unknown, l: (uz: string, ru: string, en: string) => string): string {
+  const text = String(actor ?? '').trim();
+  if (!text) return '—';
+  const [who, id] = text.split(':');
+  const names: Record<string, [string, string, string]> = { CUSTOMER: ['Mijoz', 'Клиент', 'Customer'], COURIER: ['Kuryer', 'Курьер', 'Courier'], WAREHOUSE: ['Omborchi', 'Кладовщик', 'Warehouse worker'],
+    SYSTEM: ['Tizim', 'Система', 'System'], PAYME: ['Payme', 'Payme', 'Payme'], TAXI: ['Taksi', 'Такси', 'Taxi'], OWNER: ['Egasi', 'Владелец', 'Owner'], DISPATCHER: ['Dispetcher', 'Диспетчер', 'Dispatcher'] };
+  const n = names[who];
+  if (!n) return text;
+  return id ? `${l(n[0], n[1], n[2])} #${id}` : l(n[0], n[1], n[2]);
+}
+
 /** TZ v13 item 1: true when the signed-in admin may change things on the current page (owner, or "edit" on its area). */
 export function useCanEdit(): boolean {
   const { admin } = useAuth(), { pathname } = useLocation();
@@ -87,16 +99,14 @@ export function PageTitle({ title, subtitle: _subtitle, actionLabel, onAction }:
       justifyContent: 'flex-start',
       flexWrap: 'wrap',
       gap: 1.5,
-      paddingBottom: { xs: '14px', sm: '18px' },
-      marginBottom: { xs: '14px', sm: '18px' },
-      borderBottom: '1px solid',
-      borderColor: 'divider',
+      marginBottom: { xs: '14px', sm: '20px' },
     }}
   >
-    {/* SalesDoc-like page header: a plain bold title, the main action on the right. */}
+    {/* Ninimum page header: a short red bar before a bold title, the main action on the right. */}
     <Typography
       variant="h4"
-      sx={{ fontWeight: 700, lineHeight: 1.2, fontSize: { xs: 20, sm: 22 }, flex: 1, minWidth: 0 }}
+      sx={{ fontWeight: 800, lineHeight: 1.2, fontSize: { xs: 21, sm: 24 }, flex: 1, minWidth: 0, letterSpacing: -0.3, display: 'flex', alignItems: 'center', gap: 1.25,
+        '&::before': { content: '""', width: 5, height: 24, borderRadius: 3, bgcolor: 'primary.main', flexShrink: 0 } }}
     >
       {title}
     </Typography>
@@ -105,7 +115,7 @@ export function PageTitle({ title, subtitle: _subtitle, actionLabel, onAction }:
 }
 
 export function Panel({ children, sx }: { children: ReactNode; sx?: object }) {
-  return <Paper variant="outlined" sx={{ borderRadius: 1, overflow: 'hidden', ...sx }}>{children}</Paper>;
+  return <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden', borderColor: 'divider', boxShadow: '0 1px 3px rgba(31,34,51,0.05)', ...sx }}>{children}</Paper>;
 }
 
 /** The scrolling area of a table: scrolls both ways, the header row stays on top. */
@@ -121,9 +131,8 @@ export function TableScroll({ children }: { children: ReactNode }) {
         WebkitOverflowScrolling: 'touch',
         scrollBehavior: 'smooth',
         '& table': { minWidth: { xs: 720, md: '100%' }, borderCollapse: 'separate', borderSpacing: 0 },
-        '& thead th': { position: 'sticky', top: 0, zIndex: 2, bgcolor: 'background.paper', boxShadow: 'inset 0 -1px 0 rgba(0,0,0,0.12)', fontWeight: 700, color: '#000', borderRight: '1px solid #E0E0E0' },
-        '& thead th:last-of-type': { borderRight: 0 },
-        '& tbody tr:hover td': { bgcolor: 'action.hover' },
+        '& thead th': { position: 'sticky', top: 0, zIndex: 2, bgcolor: '#F7F8FB', boxShadow: 'inset 0 -1px 0 #E6E8EF', fontWeight: 700, color: '#4A4F63', fontSize: 13, letterSpacing: 0.1, whiteSpace: 'nowrap' },
+        '& tbody tr:hover td': { bgcolor: '#FFF7F6' },
       }}
     >
       {children}

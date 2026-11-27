@@ -75,7 +75,7 @@ export default function LoginPage() {
           position: 'relative',
           overflow: 'hidden',
           p: 7,
-          background: 'linear-gradient(145deg, #263238 0%, #1C262B 100%)',
+          background: 'linear-gradient(145deg, #E8453C 0%, #B92F27 100%)',
           color: '#fff',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -123,7 +123,7 @@ export default function LoginPage() {
         </Box>
 
         <Paper elevation={0} sx={{ width: '100%', maxWidth: 455, p: { xs: 2.5, sm: 4.5 }, border: '1px solid', borderColor: 'divider', borderRadius: { xs: 3, sm: 3.5 } }}>
-          <Box sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: '#E0F2F1', color: '#009688', display: 'grid', placeItems: 'center', mb: 2.5 }}>
+          <Box sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: '#FFECEA', color: '#E8453C', display: 'grid', placeItems: 'center', mb: 2.5 }}>
             <LockOutlined />
           </Box>
           <Typography variant="h4" sx={{ fontSize: { xs: 26, sm: 29 } }}>{t('login.title')}</Typography>

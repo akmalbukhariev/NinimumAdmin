@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Autocomplete, Box, Button, Chip, CircularProgress, MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
 import { TextField } from '../components/AdminField';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { can } from '../auth/permissions';
 import { PageTitle, Panel, TablePanel, dateTime, useEnumLabel, useL, ErrorNotice } from '../components/AdminCommon';
@@ -81,9 +81,12 @@ export default function ReportsPage() {
   const [presets, setPresets] = useState<Row[]>(() => { try { return JSON.parse(localStorage.getItem('ninimum.reportPresets') || '[]'); } catch { return []; } }), [presetName, setPresetName] = useState('');
   const report = REPORTS.find(r => r.code === code), names = labels(l), statuses = statusLabels(l);
   const set = (k: string, v: string) => setF(x => ({ ...x, [k]: v }));
+  // The Hisobot menu opens a report directly: /reports?code=sales.
+  const [query] = useSearchParams(), wanted = query.get('code') || '';
+  useEffect(() => { if (wanted && available?.includes(wanted)) { setCode(wanted); setResult(null); } }, [wanted, available]);
 
   useEffect(() => {
-    apiRequest<string[]>(base, { token }).then(r => { setAvailable(r.resultData); if (r.resultData.length) setCode(c => c || r.resultData[0]); }).catch(() => setError(l('Hisobotlar ro‘yxatini yuklab bo‘lmadi.', 'Не удалось загрузить список отчётов.', 'Could not load the reports.')));
+    apiRequest<string[]>(base, { token }).then(r => { setAvailable(r.resultData); if (r.resultData.length) setCode(c => c || (r.resultData.includes(new URLSearchParams(window.location.search).get('code') || '') ? String(new URLSearchParams(window.location.search).get('code')) : r.resultData[0])); }).catch(() => setError(l('Hisobotlar ro‘yxatini yuklab bo‘lmadi.', 'Не удалось загрузить список отчётов.', 'Could not load the reports.')));
     // Filter lists: each one only if the user may read it.
     const keep = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
     void Promise.all([keep(listProducts(token, { page: 1, page_size: 500 }).then(d => d.items), [] as Row[]), keep(listCategories(token), [] as Row[]), keep(listLocations(token), [] as Row[]), keep(listSuppliers(token), [] as Row[]), keep(listDeliveryWorkers(token), [] as Row[])])
@@ -168,7 +171,7 @@ export default function ReportsPage() {
   const shown = REPORTS.filter(r => available?.includes(r.code));
 
   return <>
-    <PageTitle title={l('Hisobotlar', 'Отчёты', 'Reports')} />
+    <PageTitle title={report && wanted ? l(...report.title).replace(/^\d+\.\s*/, '') : l('Batafsil hisobotlar', 'Подробные отчёты', 'Detailed reports')} />
     <ErrorNotice message={error} sx={{mb:2}} onClose={()=>setError(null)}/>
     <Panel sx={{ p: 2, mb: 2 }}><Stack spacing={2}>
       <TextField select size="small" label={l('Hisobot', 'Отчёт', 'Report')} value={code} onChange={e => setCode(e.target.value)} sx={{ maxWidth: 520 }}>
